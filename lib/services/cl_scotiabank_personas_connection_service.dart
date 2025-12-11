@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/webview/webview.dart';
 
@@ -74,7 +75,10 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<String> getProducts(WebviewInstance webview, String credentials) {
+  Future<List<Product>> getProducts(
+    WebviewInstance webview,
+    String credentials,
+  ) {
     // TODO: implement getProducts
     throw UnimplementedError();
   }

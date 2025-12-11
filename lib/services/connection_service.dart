@@ -1,3 +1,4 @@
+import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/webview/webview.dart';
 
 abstract class ConnectionService {
@@ -6,5 +7,8 @@ abstract class ConnectionService {
     String username,
     String password,
   );
-  Future<String> getProducts(WebviewInstance webview, String credentials);
+  Future<List<Product>> getProducts(
+    WebviewInstance webview,
+    String credentials,
+  );
 }
