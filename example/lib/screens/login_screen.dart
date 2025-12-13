@@ -30,28 +30,37 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 SizedBox(height: 10),
-                RutFormField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(labelText: 'Username or RUT'),
-                ),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                  enableSuggestions: true,
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () async {
-                    final credentials = await widget.service.auth(
-                      _usernameController.text,
-                      _passwordController.text,
-                    );
-                    if (context.mounted) {
-                      Navigator.pop(context, credentials);
-                    }
-                  },
-                  child: Text('Login'),
+                AutofillGroup(
+                  child: Column(
+                    children: [
+                      RutFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Username or RUT',
+                        ),
+                      ),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(labelText: 'Password'),
+                        obscureText: true,
+                        enableSuggestions: true,
+                        autofillHints: [AutofillHints.password],
+                      ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final credentials = await widget.service.auth(
+                            _usernameController.text,
+                            _passwordController.text,
+                          );
+                          if (context.mounted) {
+                            Navigator.pop(context, credentials);
+                          }
+                        },
+                        child: Text('Login'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

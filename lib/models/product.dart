@@ -37,7 +37,7 @@ class Product {
       name: json['name'] as String,
       type: ProductType.values.firstWhere(
         (e) => e.name == json['type'],
-        orElse: () => ProductType.other,
+        orElse: () => ProductType.unknown,
       ),
       availableAmount: json['availableAmount'] != null
           ? AvailableAmount.fromJson(

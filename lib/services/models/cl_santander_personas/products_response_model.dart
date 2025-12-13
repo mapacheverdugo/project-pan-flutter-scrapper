@@ -202,20 +202,20 @@ class ClSantanderPersonasProductsE1 {
     required this.calidadparticipacion,
   });
 
-  final String? numerocontrato;
-  final String? producto;
-  final String? subproducto;
-  final String? montodisponible;
-  final String? montoutilizado;
+  final String numerocontrato;
+  final String producto;
+  final String subproducto;
+  final String montodisponible;
+  final String montoutilizado;
   final String? glosacorta;
-  final String? oficinacontrato;
-  final String? cupo;
+  final String oficinacontrato;
+  final String cupo;
   final String? glosaestado;
-  final String? numeropan;
+  final String numeropan;
   final String? estadooperacion;
   final String? estadorelacion;
   final String? codigomoneda;
-  final String? agrupacioncomercial;
+  final String agrupacioncomercial;
   final String? calidadparticipacion;
 
   factory ClSantanderPersonasProductsE1.fromJson(Map<String, dynamic> json) {

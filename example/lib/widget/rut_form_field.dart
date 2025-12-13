@@ -73,6 +73,7 @@ class _RutFormFieldState extends State<RutFormField> {
           return newValue;
         }),
       ],
+      autofillHints: [AutofillHints.username],
       onChanged: (v) {
         _currentValue = v.isNotEmpty ? removeRutFormatting(v) : null;
         widget.onChanged?.call(_currentValue);

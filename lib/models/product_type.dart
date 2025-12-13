@@ -1,11 +1,6 @@
 enum ProductType {
+  depositaryAccount,
   creditCard,
-  debitCard,
-  checkingAccount,
-  savingsAccount,
-  loan,
-  other,
+  depositaryAccountCreditLine,
+  unknown,
 }
-
-
-

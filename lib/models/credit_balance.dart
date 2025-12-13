@@ -1,8 +1,8 @@
 class CreditBalance {
-  final double creditLimitAmount;
+  final int creditLimitAmount;
   final String currency;
-  final double availableAmount;
-  final double usedAmount;
+  final int availableAmount;
+  final int usedAmount;
 
   CreditBalance({
     required this.creditLimitAmount,
@@ -13,10 +13,10 @@ class CreditBalance {
 
   factory CreditBalance.fromJson(Map<String, dynamic> json) {
     return CreditBalance(
-      creditLimitAmount: (json['creditLimitAmount'] as num).toDouble(),
+      creditLimitAmount: (json['creditLimitAmount'] as num).toInt(),
       currency: json['currency'] as String,
-      availableAmount: (json['availableAmount'] as num).toDouble(),
-      usedAmount: (json['usedAmount'] as num).toDouble(),
+      availableAmount: (json['availableAmount'] as num).toInt(),
+      usedAmount: (json['usedAmount'] as num).toInt(),
     );
   }
 
@@ -29,6 +29,3 @@ class CreditBalance {
     };
   }
 }
-
-
-

@@ -5,9 +5,9 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:pan_scrapper/mappers/cl_santander_personas/product_mapper.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
+import 'package:pan_scrapper/services/mappers/cl_santander_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 import 'package:pan_scrapper/webview/webview.dart';
 

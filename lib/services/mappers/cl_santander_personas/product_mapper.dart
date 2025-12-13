@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/models/available_amount.dart';
@@ -5,198 +6,168 @@ import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/models/product_type.dart';
-
-// ProductIdMetadata interface
-class _ProductIdMetadata {
-  final String rawContractId;
-  final String rawProductId;
-  final String rawSubProductId;
-  final String rawCenterId;
-  final String? rawEntityId;
-
-  _ProductIdMetadata({
-    required this.rawContractId,
-    required this.rawProductId,
-    required this.rawSubProductId,
-    required this.rawCenterId,
-    this.rawEntityId,
-  });
-}
-
-// Response model classes (using dynamic/json structure)
-// These models can be constructed from JSON responses
-// Example: _SantanderProductsResponseModel(data: jsonDecode(response)['DATA'])
-class _SantanderProductsResponseModel {
-  final Map<String, dynamic>? data;
-
-  _SantanderProductsResponseModel({this.data});
-
-  // Access DATA.OUTPUT.MATRICES.MATRIZCAPTACIONES.e1
-  List<dynamic>? get e1 {
-    final output = data?['OUTPUT'] as Map<String, dynamic>?;
-    final matrices = output?['MATRICES'] as Map<String, dynamic>?;
-    final matrizCaptaciones =
-        matrices?['MATRIZCAPTACIONES'] as Map<String, dynamic>?;
-    return matrizCaptaciones?['e1'] as List<dynamic>?;
-  }
-}
-
-class _SantanderCardResponseModel {
-  final Map<String, dynamic>? data;
-
-  _SantanderCardResponseModel({this.data});
-
-  // Access DATA.CONTarjetasRut_Response.OUTPUT.DetalleConsultaTarjetas
-  List<dynamic>? get detalleConsultaTarjetas {
-    final contTarjetasRutResponse =
-        data?['CONTarjetasRut_Response'] as Map<String, dynamic>?;
-    final output = contTarjetasRutResponse?['OUTPUT'] as Map<String, dynamic>?;
-    return output?['DetalleConsultaTarjetas'] as List<dynamic>?;
-  }
-}
+import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasProductMapper {
-  static final Map<String, ProductType> _santanderProductType = {
-    'TCR': ProductType.creditCard,
-    'LCR': ProductType.loan,
-    'CCC': ProductType.checkingAccount,
-  };
+  static ProductType _getProductType(String agrupacionComercial) {
+    switch (agrupacionComercial) {
+      case 'TCR':
+        return ProductType.creditCard;
+      case 'LCR':
+        return ProductType.depositaryAccountCreditLine;
+      case 'CCC':
+        return ProductType.depositaryAccount;
+      default:
+        return ProductType.depositaryAccount;
+    }
+  }
 
-  static List<Product> fromProductsResponseModelAndCardResponseModel(
-    Map<String, dynamic> productsResponseJson,
-    Map<String, dynamic> cardResponseJson,
+  static List<Product> fromProductsResponseAndCardResponse(
+    ClSantanderPersonasProductsResponse productsResponse,
+    ClSantanderPersonasCardResponse cardResponse,
   ) {
-    final productsResponseModel = _SantanderProductsResponseModel(
-      data: productsResponseJson,
-    );
-    final cardResponseModel = _SantanderCardResponseModel(
-      data: cardResponseJson,
-    );
-    final productList = <Product>[];
+    try {
+      final productList = <Product>[];
 
-    final e1 = productsResponseModel.e1;
-    if (e1 != null && e1.isNotEmpty) {
-      // Group products by productId
-      final groupedProducts = <String, List<Map<String, dynamic>>>{};
+      final e1 = productsResponse.data?.output?.matrices?.matrizcaptaciones?.e1;
+      if (e1 != null && e1.isNotEmpty) {
+        // Group products by productId
+        final groupedProducts = <String, _GrouppedProduct>{};
 
-      for (final product in e1) {
-        final productMap = product as Map<String, dynamic>;
-        final contractNumber = productMap['NUMEROCONTRATO'] as String? ?? '';
-        final producto = productMap['PRODUCTO'] as String? ?? '';
+        for (final product in e1) {
+          final numerocontrato = product.numerocontrato;
+          final producto = product.producto;
+          final subproducto = product.subproducto;
+          final oficinacontrato = product.oficinacontrato;
 
-        // Find matching card
-        final detalle = cardResponseModel.detalleConsultaTarjetas;
-        Map<String, dynamic>? card;
-        if (detalle != null) {
-          card = detalle.cast<Map<String, dynamic>>().firstWhere(
-            (c) => c['Contrato'] == contractNumber,
-            orElse: () => <String, dynamic>{},
+          // Find matching card
+          final cards = cardResponse
+              .data
+              ?.conTarjetasRutResponse
+              ?.output
+              ?.detalleConsultaTarjetas;
+          ClSantanderPersonasCardDetalleConsultaTarjeta? card;
+
+          card = cards?.firstWhereOrNull(
+            (card) => card.contrato == numerocontrato,
           );
-          if (card.isEmpty) card = null;
+
+          final productId = createProductId(
+            rawContractId: numerocontrato,
+            rawProductId: producto,
+            rawSubProductId: subproducto,
+            rawCenterId: oficinacontrato,
+            rawEntityId: card?.entidad,
+          );
+
+          if (groupedProducts.containsKey(productId)) {
+            groupedProducts[productId]!.products.add(product);
+          } else {
+            groupedProducts[productId] = _GrouppedProduct(
+              products: [product],
+              card: card,
+            );
+          }
         }
 
-        final productId = createProductId(
-          rawContractId: contractNumber,
-          rawProductId: producto,
-          rawSubProductId: productMap['SUBPRODUCTO'] as String? ?? '',
-          rawCenterId: productMap['OFICINACONTRATO'] as String? ?? '',
-          rawEntityId: card?['Entidad'] as String?,
-        );
+        // Process grouped products
+        groupedProducts.forEach((productId, productsCard) {
+          final products = productsCard.products;
+          final card = productsCard.card;
 
-        groupedProducts.putIfAbsent(productId, () => []);
-        groupedProducts[productId]!.add(productMap);
+          if (products.isEmpty) return;
+
+          final agrupacionComercial = products.first.agrupacioncomercial;
+
+          if (agrupacionComercial == 'TCR' && card != null) {
+            final creditBalances = <CreditBalance>[];
+
+            for (final product in products) {
+              final currency = product.codigomoneda;
+              final options = currency == 'CLP'
+                  ? _nationalOptions
+                  : _internationalOptions;
+
+              final creditLimitAmount = Amount.parse(
+                product.cupo,
+                options,
+              ).value;
+              final availableAmount = Amount.parse(
+                product.montodisponible,
+                options,
+              ).value;
+
+              final usedAmount = Amount.parse(
+                product.montoutilizado,
+                options,
+              ).value;
+
+              if (creditLimitAmount != 0 && currency != null) {
+                creditBalances.add(
+                  CreditBalance(
+                    creditLimitAmount: creditLimitAmount!.toInt(),
+                    availableAmount: availableAmount!.toInt(),
+                    usedAmount: usedAmount!.toInt(),
+                    currency: currency,
+                  ),
+                );
+              }
+            }
+
+            final numeroPan = products.first.numeropan;
+            final glosaCorta = products.first.glosacorta;
+
+            productList.add(
+              Product(
+                number: productId,
+                name: titleCase(
+                  glosaCorta?.toLowerCase() ?? card.glosaProducto ?? '',
+                ),
+                type: _getProductType(agrupacionComercial),
+                cardBrand: CardBrand.other,
+                cardLast4Digits: numeroPan.length >= 4
+                    ? numeroPan.substring(numeroPan.length - 4)
+                    : numeroPan,
+                creditBalances: creditBalances,
+                isForSecondaryCardHolder: false,
+              ),
+            );
+          } else {
+            // Depositary product
+            final glosaCorta = products.first.glosacorta;
+
+            final currency = products.first.codigomoneda;
+            final options = currency == 'CLP'
+                ? _nationalOptions
+                : _internationalOptions;
+            final montoDisponible = Amount.parse(
+              products.first.montodisponible!,
+              options,
+            ).value;
+
+            ProductType productType = _getProductType(agrupacionComercial);
+
+            productList.add(
+              Product(
+                number: productId,
+                name: titleCase(glosaCorta?.toLowerCase() ?? ''),
+                type: productType,
+                availableAmount: AvailableAmount(
+                  amount: montoDisponible!.toInt(),
+                  currency: currency ?? 'CLP',
+                ),
+                creditBalances: [],
+                isForSecondaryCardHolder: false,
+              ),
+            );
+          }
+        });
       }
 
-      // Process grouped products
-      groupedProducts.forEach((productId, products) {
-        if (products.isEmpty) return;
-
-        final firstProduct = products[0];
-        final agrupacionComercial =
-            firstProduct['AGRUPACIONCOMERCIAL'] as String? ?? '';
-
-        if (agrupacionComercial == 'TCR') {
-          // Credit card product
-          var creditBalances = products
-              .map((product) {
-                final cupo =
-                    numberFromNumberWithSymbolAtTheEnd(
-                      product['CUPO'] as String? ?? '',
-                    ) /
-                    100;
-                final montoDisponible =
-                    numberFromNumberWithSymbolAtTheEnd(
-                      product['MONTODISPONIBLE'] as String? ?? '',
-                    ) /
-                    100;
-                final montoUtilizado =
-                    numberFromNumberWithSymbolAtTheEnd(
-                      product['MONTOUTILIZADO'] as String? ?? '',
-                    ) /
-                    100;
-                final codigoMoneda = product['CODIGOMONEDA'] as String? ?? '';
-
-                return CreditBalance(
-                  creditLimitAmount: cupo,
-                  availableAmount: montoDisponible,
-                  usedAmount: montoUtilizado,
-                  currency: codigoMoneda,
-                );
-              })
-              .where((balance) => balance.creditLimitAmount != 0)
-              .toList();
-
-          final numeroPan = firstProduct['NUMEROPAN'] as String? ?? '';
-          final glosaCorta = firstProduct['GLOSACORTA'] as String? ?? '';
-
-          productList.add(
-            Product(
-              number: removeEverythingButNumbers(numeroPan),
-              name: titleCase(glosaCorta.toLowerCase()),
-              type: ProductType.creditCard,
-              cardBrand: CardBrand.other,
-              cardLast4Digits: numeroPan.length >= 4
-                  ? numeroPan.substring(numeroPan.length - 4)
-                  : numeroPan,
-              creditBalances: creditBalances,
-              isForSecondaryCardHolder: false,
-            ),
-          );
-        } else {
-          // Depositary product
-          final glosaCorta = firstProduct['GLOSACORTA'] as String? ?? '';
-          final numeroContrato =
-              firstProduct['NUMEROCONTRATO'] as String? ?? '';
-          final montoDisponible =
-              numberFromNumberWithSymbolAtTheEnd(
-                firstProduct['MONTODISPONIBLE'] as String? ?? '',
-              ) /
-              100;
-          final codigoMoneda = firstProduct['CODIGOMONEDA'] as String? ?? '';
-
-          ProductType productType =
-              _santanderProductType[agrupacionComercial] ?? ProductType.other;
-
-          productList.add(
-            Product(
-              number: removeEverythingButNumbers(
-                removeEverythingButNumbers(numeroContrato),
-              ),
-              name: titleCase(glosaCorta.toLowerCase()),
-              type: productType,
-              availableAmount: AvailableAmount(
-                amount: montoDisponible,
-                currency: codigoMoneda,
-              ),
-              creditBalances: [],
-              isForSecondaryCardHolder: false,
-            ),
-          );
-        }
-      });
+      return productList;
+    } catch (e) {
+      rethrow;
     }
-
-    return productList;
   }
 
   static String createProductId({
@@ -216,9 +187,9 @@ class ClSantanderPersonasProductMapper {
     return id;
   }
 
-  static _ProductIdMetadata parseProductId(String productId) {
+  static ClSantanderPersonasProductIdMetadata parseProductId(String productId) {
     final parts = productId.split('_');
-    return _ProductIdMetadata(
+    return ClSantanderPersonasProductIdMetadata(
       rawContractId: parts.length > 0 ? parts[0] : '',
       rawProductId: parts.length > 1 ? parts[1] : '',
       rawSubProductId: parts.length > 2 ? parts[2] : '',
@@ -226,4 +197,25 @@ class ClSantanderPersonasProductMapper {
       rawEntityId: parts.length > 4 ? parts[4] : null,
     );
   }
+
+  static final _nationalOptions = AmountOptions(
+    factor: 100,
+    thousandSeparator: null,
+    decimalSeparator: null,
+    currencyDecimals: 0,
+  );
+
+  static final _internationalOptions = AmountOptions(
+    factor: 1,
+    thousandSeparator: null,
+    decimalSeparator: null,
+    currencyDecimals: 2,
+  );
+}
+
+class _GrouppedProduct {
+  final List<ClSantanderPersonasProductsE1> products;
+  final ClSantanderPersonasCardDetalleConsultaTarjeta? card;
+
+  _GrouppedProduct({required this.products, required this.card});
 }

@@ -1,12 +1,59 @@
-/// Extracts a number from a string that may have symbols at the end
-/// Removes all non-numeric characters except for potential negative sign at start
-/// Example: "1000.50$" -> 1000.50
-double numberFromNumberWithSymbolAtTheEnd(String input) {
-  if (input.isEmpty) return 0.0;
-  // Remove all non-numeric characters except for potential negative sign at start
-  final cleaned = input.replaceAll(RegExp(r'[^0-9.-]'), '');
-  return double.tryParse(cleaned) ?? 0.0;
+class Amount {
+  late final num? _value;
+
+  Amount.parse(String text, AmountOptions options) {
+    final thousandSeparator = options.thousandSeparator;
+    final decimalSeparator = options.decimalSeparator;
+    final currencyDecimals = options.currencyDecimals;
+    final factor = options.factor;
+
+    text = _removeEverythingButNumberSymbols(text);
+    final symbolAtTheEnd = text.endsWith('+') || text.endsWith('-');
+    final symbolAtTheStart = text.startsWith('+') || text.startsWith('-');
+
+    final explicitSymbol = symbolAtTheStart
+        ? text[0]
+        : symbolAtTheEnd
+        ? text[text.length - 1]
+        : '';
+
+    text = symbolAtTheEnd ? text.substring(0, text.length - 1) : text;
+
+    if (thousandSeparator != null && thousandSeparator.isNotEmpty) {
+      text = text.replaceAll(thousandSeparator, '');
+    }
+
+    if (decimalSeparator != null && decimalSeparator.isNotEmpty) {
+      final numberParts = text.split(decimalSeparator);
+      final integerPart = numberParts[0];
+      final decimalPart = numberParts.length > 1 ? numberParts[1] : '';
+
+      final paddedDecimalPart = decimalPart.padRight(currencyDecimals, '0');
+
+      text = '$integerPart$paddedDecimalPart';
+    }
+
+    final value = num.tryParse('$explicitSymbol$text');
+    _value = value != null ? value * (1 / factor) : null;
+  }
+
+  static String _removeEverythingButNumberSymbols(String text) {
+    return text.replaceAll(RegExp(r'[^0-9.+-,]'), '');
+  }
+
+  num? get value => _value;
 }
 
+class AmountOptions {
+  final double factor;
+  final String? thousandSeparator;
+  final String? decimalSeparator;
+  final int currencyDecimals;
 
-
+  AmountOptions({
+    this.factor = 1,
+    this.thousandSeparator = ',',
+    this.decimalSeparator = '.',
+    this.currencyDecimals = 0,
+  });
+}
