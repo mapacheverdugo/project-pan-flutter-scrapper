@@ -9,16 +9,14 @@ import 'package:pan_scrapper/webview/webview.dart';
 
 class ClBciPersonasConnectionService extends ConnectionService {
   late final Dio _dio;
+  final Future<WebviewInstance> Function() _webviewFactory;
 
-  ClBciPersonasConnectionService(this._dio);
+  ClBciPersonasConnectionService(this._dio, this._webviewFactory);
 
   @override
-  Future<String> auth(
-    WebviewInstance webview,
-    String username,
-    String password,
-  ) async {
+  Future<String> auth(String username, String password) async {
     final completer = Completer<String>();
+    final webview = await _webviewFactory();
 
     try {
       log("ScotiabankService auth before navigate");
@@ -75,10 +73,7 @@ class ClBciPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Product>> getProducts(
-    WebviewInstance webview,
-    String credentials,
-  ) {
+  Future<List<Product>> getProducts(String credentials) {
     // TODO: implement getProducts
     throw UnimplementedError();
   }
