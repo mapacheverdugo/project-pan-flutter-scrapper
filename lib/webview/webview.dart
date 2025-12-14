@@ -67,6 +67,11 @@ abstract class WebviewInstance {
   void removeAjaxResponseListener(RegExp regex);
   void addLoadResourceListener(RegExp regex, VoidCallback callback);
   void removeLoadResourceListener(RegExp regex);
+  void addShouldOverrideUrlLoadingListener(
+    RegExp regex,
+    Future<NavigationActionPolicy?> Function(NavigationAction) callback,
+  );
+  void removeShouldOverrideUrlLoadingListener(RegExp regex);
   void removeAllListeners();
   Future<void> close();
 }

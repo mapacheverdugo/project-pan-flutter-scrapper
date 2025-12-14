@@ -17,6 +17,8 @@ class HeadfulWebview implements WebviewInstance {
   final Map<RegExp, Future<AjaxRequestAction> Function(AjaxRequest request)>
   _ajaxResponseInterceptor = {};
   final Map<RegExp, VoidCallback> _loadResourceListeners = {};
+  final Map<RegExp, Future<NavigationActionPolicy?> Function(NavigationAction)>
+  _shouldOverrideUrlLoadingListeners = {};
 
   bool _isInitialized = false;
   Route? _route;
@@ -25,8 +27,10 @@ class HeadfulWebview implements WebviewInstance {
 
   Future<void> init({
     required BuildContext context,
+
     Widget Function(BuildContext context, Widget webview)? builder,
     String? initialUrl,
+    String? cookies,
     Future<FetchRequest?> Function(FetchRequest request)?
     fetchRequestInterceptor,
     Future<AjaxRequestAction?> Function(AjaxRequest request)?
@@ -40,8 +44,17 @@ class HeadfulWebview implements WebviewInstance {
     Completer<InAppWebViewController> completer = Completer();
 
     final webviewWidget = HeadfulWebviewWidget(
-      initialUrl: initialUrl,
-      initialSettings: InAppWebViewSettings(),
+      initialUrlRequest: initialUrl != null
+          ? URLRequest(
+              url: WebUri(initialUrl),
+              headers: cookies != null ? {'Cookie': cookies} : null,
+            )
+          : null,
+
+      initialSettings: InAppWebViewSettings(
+        userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+      ),
       onDispose: () {
         _dispose();
       },
@@ -66,6 +79,12 @@ class HeadfulWebview implements WebviewInstance {
         resource,
         loadResourceListeners: _loadResourceListeners,
       ),
+      shouldOverrideUrlLoading: (controller, navigationAction) =>
+          shouldOverrideUrlLoading(
+            navigationAction,
+            shouldOverrideUrlLoadingListeners:
+                _shouldOverrideUrlLoadingListeners,
+          ),
     );
 
     _cookieManager.deleteAllCookies();
@@ -172,7 +191,6 @@ class HeadfulWebview implements WebviewInstance {
     return _inAppWebViewController?.loadUrl(urlRequest: request);
   }
 
-  @override
   Future<void> stopLoadWaitNavigation({Duration? timeout}) async {
     _task = StopLoadWaitNavigation();
     return await _task!.completer.future.timeout(
@@ -180,7 +198,6 @@ class HeadfulWebview implements WebviewInstance {
     );
   }
 
-  @override
   Future<void> stopLoadWaitExactUri(Uri uri, {Duration? timeout}) async {
     if (_inAppWebViewController == null) {
       throw Exception("HeadlessWebview is not running");
@@ -197,7 +214,6 @@ class HeadfulWebview implements WebviewInstance {
     );
   }
 
-  @override
   Future<void> stopLoadWaitStartsWithUri(Uri uri, {Duration? timeout}) async {
     if (_inAppWebViewController == null) {
       throw Exception("HeadlessWebview is not running");
@@ -215,7 +231,6 @@ class HeadfulWebview implements WebviewInstance {
     );
   }
 
-  @override
   Future<String?> getHtml({Duration? timeout}) async {
     if (_inAppWebViewController == null) {
       throw Exception("HeadlessWebview is not running");
@@ -436,9 +451,23 @@ class HeadfulWebview implements WebviewInstance {
   }
 
   @override
+  void addShouldOverrideUrlLoadingListener(
+    RegExp regex,
+    Future<NavigationActionPolicy?> Function(NavigationAction) callback,
+  ) {
+    _shouldOverrideUrlLoadingListeners[regex] = callback;
+  }
+
+  @override
+  void removeShouldOverrideUrlLoadingListener(RegExp regex) {
+    _shouldOverrideUrlLoadingListeners.remove(regex);
+  }
+
+  @override
   void removeAllListeners() {
     _ajaxRequestInterceptors.clear();
     _ajaxResponseInterceptor.clear();
     _loadResourceListeners.clear();
+    _shouldOverrideUrlLoadingListeners.clear();
   }
 }

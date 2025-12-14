@@ -1,32 +1,38 @@
+import 'package:example/models/access_credentials.dart';
+import 'package:example/models/institution_ext.dart';
 import 'package:example/widget/code_block.dart';
 import 'package:example/widget/product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
-class InstitutionDetailsScreen extends StatefulWidget {
-  const InstitutionDetailsScreen({
+class ConnectionDetailsScreen extends StatefulWidget {
+  const ConnectionDetailsScreen({
     super.key,
     required this.service,
     required this.credentials,
   });
 
   final PanScrapperService service;
-  final String credentials;
+  final AccessCredentials credentials;
 
   @override
-  State<InstitutionDetailsScreen> createState() =>
-      _InstitutionDetailsScreenState();
+  State<ConnectionDetailsScreen> createState() =>
+      _ConnectionDetailsScreenState();
 }
 
-class _InstitutionDetailsScreenState extends State<InstitutionDetailsScreen> {
+class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
   List<Product> _products = [];
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Institution Details')),
+      appBar: AppBar(
+        title: Text(
+          '${widget.credentials.username} - ${widget.service.institution.label}',
+        ),
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(10),
         child: SafeArea(
@@ -34,13 +40,19 @@ class _InstitutionDetailsScreenState extends State<InstitutionDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ListTile(
-                title: Text('Credentials'),
+                title: Text(
+                  'Credentials',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 contentPadding: EdgeInsets.zero,
               ),
-              CodeBlock(text: widget.credentials),
+              CodeBlock(text: widget.credentials.resultCredentials),
               SizedBox(height: 10),
               ListTile(
-                title: Text('Products'),
+                title: Text(
+                  'Products',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 contentPadding: EdgeInsets.zero,
                 trailing: ElevatedButton(
                   onPressed: _isLoading
@@ -78,7 +90,9 @@ class _InstitutionDetailsScreenState extends State<InstitutionDetailsScreen> {
       _isLoading = true;
     });
     try {
-      final newProducts = await widget.service.getProducts(widget.credentials);
+      final newProducts = await widget.service.getProducts(
+        widget.credentials.resultCredentials,
+      );
       setState(() {
         _isLoading = false;
         _products = newProducts;

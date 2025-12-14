@@ -11,26 +11,34 @@ class HeadfulWebviewWidget extends StatefulWidget {
     required this.onWebViewCreated,
     required this.onDispose,
     this.webViewKey,
-    this.initialUrl,
+    this.initialUrlRequest,
     this.onLoadStop,
     this.onLoadResource,
+    this.shouldOverrideUrlLoading,
     super.key,
   });
 
-  final String? initialUrl;
+  final URLRequest? initialUrlRequest;
   final InAppWebViewSettings initialSettings;
   final GlobalKey<HeadfulWebviewWidgetState>? webViewKey;
   final void Function(InAppWebViewController controller) onWebViewCreated;
   final void Function(InAppWebViewController controller, WebUri? url)?
-      onLoadStop;
+  onLoadStop;
   final Future<AjaxRequest?> Function(AjaxRequest originalRequest)
-      shouldInterceptAjaxRequest;
+  shouldInterceptAjaxRequest;
   final Future<AjaxRequestAction?> Function(AjaxRequest request)
-      onAjaxReadyStateChange;
+  onAjaxReadyStateChange;
   final VoidCallback onDispose;
   final void Function(
-          InAppWebViewController controller, LoadedResource resource)?
-      onLoadResource;
+    InAppWebViewController controller,
+    LoadedResource resource,
+  )?
+  onLoadResource;
+  final Future<NavigationActionPolicy?> Function(
+    InAppWebViewController controller,
+    NavigationAction navigationAction,
+  )?
+  shouldOverrideUrlLoading;
 
   @override
   State<HeadfulWebviewWidget> createState() => HeadfulWebviewWidgetState();
@@ -47,39 +55,53 @@ class HeadfulWebviewWidgetState extends State<HeadfulWebviewWidget> {
   Widget build(BuildContext context) {
     return InAppWebView(
       key: widget.webViewKey,
-      initialUrlRequest: widget.initialUrl != null
-          ? URLRequest(url: WebUri(widget.initialUrl!))
-          : null,
+      initialUrlRequest: widget.initialUrlRequest,
       initialSettings: widget.initialSettings,
       onWebViewCreated: (controller) {
         widget.onWebViewCreated(controller);
       },
+
       onLoadStart: (controller, url) {},
       onPermissionRequest: (controller, request) async {
-        log("HeadfulWebviewWidget onPermissionRequest: ${request.origin.data?.uri.toString()}");
+        log(
+          "HeadfulWebviewWidget onPermissionRequest: ${request.origin.data?.uri.toString()}",
+        );
         return PermissionResponse(
-            resources: request.resources,
-            action: PermissionResponseAction.GRANT);
+          resources: request.resources,
+          action: PermissionResponseAction.GRANT,
+        );
       },
-      shouldOverrideUrlLoading: (controller, navigationAction) async {
-        log("HeadfulWebviewWidget shouldOverrideUrlLoading: ${navigationAction.request.url.toString()}");
-        return NavigationActionPolicy.ALLOW;
+      shouldOverrideUrlLoading: ((controller, navigationAction) async {
+        log(
+          "HeadfulWebviewWidget shouldOverrideUrlLoading: ${navigationAction.request.url.toString()}",
+        );
+        return widget.shouldOverrideUrlLoading?.call(
+          controller,
+          navigationAction,
+        );
+      }),
+      shouldInterceptAjaxRequest: (controller, ajaxRequest) {
+        log(
+          "HeadfulWebviewWidget shouldInterceptAjaxRequest: ${ajaxRequest.url?.uriValue.toString()}",
+        );
+        return widget.shouldInterceptAjaxRequest(ajaxRequest);
       },
-      shouldInterceptAjaxRequest: (controller, ajaxRequest) =>
-          widget.shouldInterceptAjaxRequest(ajaxRequest),
-      onAjaxReadyStateChange: (controller, request) =>
-          widget.onAjaxReadyStateChange(request),
+      onAjaxReadyStateChange: (controller, request) {
+        log(
+          "HeadfulWebviewWidget onAjaxReadyStateChange: ${request.url?.uriValue.toString()}",
+        );
+        return widget.onAjaxReadyStateChange(request);
+      },
       onLoadStop: (controller, url) {
         log("HeadfulWebviewWidget onLoadStop: ${url?.data?.uri}");
         widget.onLoadStop?.call(controller, url);
       },
-      onReceivedError: (controller, request, error) {},
       onLoadResource: (controller, resource) {
-        log('HeadfulWebviewWidget onLoadResource ${resource.url?.uriValue.toString()}');
+        log(
+          'HeadfulWebviewWidget onLoadResource ${resource.url?.uriValue.toString()}',
+        );
         widget.onLoadResource?.call(controller, resource);
       },
-      onUpdateVisitedHistory: (controller, url, androidIsReload) {},
-      onConsoleMessage: (controller, consoleMessage) {},
     );
   }
 }

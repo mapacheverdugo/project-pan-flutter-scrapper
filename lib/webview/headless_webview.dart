@@ -16,12 +16,16 @@ class HeadlessWebview implements WebviewInstance {
   final Map<RegExp, Future<AjaxRequestAction> Function(AjaxRequest request)>
   _ajaxResponseInterceptor = {};
   final Map<RegExp, VoidCallback> _loadResourceListeners = {};
+  final Map<RegExp,
+      Future<NavigationActionPolicy?> Function(NavigationAction)>
+  _shouldOverrideUrlLoadingListeners = {};
   bool _isInitialized = false;
 
   HeadlessWebview();
 
   Future<void> init({
     String? initialUrl,
+    String? cookies,
     Future<FetchRequest?> Function(FetchRequest request)?
     fetchRequestInterceptor,
     Future<AjaxRequestAction?> Function(AjaxRequest request)?
@@ -34,8 +38,12 @@ class HeadlessWebview implements WebviewInstance {
 
     _headlessInAppWebView = HeadlessInAppWebView(
       initialUrlRequest: initialUrl != null
-          ? URLRequest(url: WebUri(initialUrl))
+          ? URLRequest(
+              url: WebUri(initialUrl),
+              headers: cookies != null ? {'Cookie': cookies} : null,
+            )
           : null,
+
       onLoadResource: (controller, resource) => onLoadResource(
         resource,
         loadResourceListeners: _loadResourceListeners,
@@ -51,12 +59,11 @@ class HeadlessWebview implements WebviewInstance {
         requestInterceptors: _ajaxRequestInterceptors,
         responseInterceptors: _ajaxResponseInterceptor,
       ),
-      shouldOverrideUrlLoading: (controller, navigationAction) async {
-        log(
-          "HeadfulWebviewWidget shouldOverrideUrlLoading: ${navigationAction.request.url.toString()}",
-        );
-        return NavigationActionPolicy.ALLOW;
-      },
+      shouldOverrideUrlLoading: (controller, navigationAction) =>
+          shouldOverrideUrlLoading(
+        navigationAction,
+        shouldOverrideUrlLoadingListeners: _shouldOverrideUrlLoadingListeners,
+      ),
       onLoadStop: (controller, url) {
         log("onLoadStop: $url");
 
@@ -417,9 +424,23 @@ class HeadlessWebview implements WebviewInstance {
   }
 
   @override
+  void addShouldOverrideUrlLoadingListener(
+    RegExp regex,
+    Future<NavigationActionPolicy?> Function(NavigationAction) callback,
+  ) {
+    _shouldOverrideUrlLoadingListeners[regex] = callback;
+  }
+
+  @override
+  void removeShouldOverrideUrlLoadingListener(RegExp regex) {
+    _shouldOverrideUrlLoadingListeners.remove(regex);
+  }
+
+  @override
   void removeAllListeners() {
     _ajaxRequestInterceptors.clear();
     _ajaxResponseInterceptor.clear();
     _loadResourceListeners.clear();
+    _shouldOverrideUrlLoadingListeners.clear();
   }
 }

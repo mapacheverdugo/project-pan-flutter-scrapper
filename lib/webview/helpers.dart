@@ -387,3 +387,25 @@ void onLoadResource(
     }
   }
 }
+
+Future<NavigationActionPolicy?> shouldOverrideUrlLoading(
+  NavigationAction navigationAction, {
+  Map<RegExp, Future<NavigationActionPolicy?> Function(NavigationAction)>
+      shouldOverrideUrlLoadingListeners = const {},
+}) async {
+  final uriString = navigationAction.request.url?.uriValue.toString();
+  log('WebViewHelpers shouldOverrideUrlLoading uriString $uriString');
+  if (uriString == null) return NavigationActionPolicy.ALLOW;
+
+  for (final listenerEntry in shouldOverrideUrlLoadingListeners.entries) {
+    final regExp = listenerEntry.key;
+
+    if (regExp.hasMatch(uriString)) {
+      final callback = listenerEntry.value;
+      final result = await callback(navigationAction);
+      if (result != null) return result;
+    }
+  }
+
+  return NavigationActionPolicy.ALLOW;
+}

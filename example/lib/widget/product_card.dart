@@ -1,6 +1,7 @@
+import 'package:example/models/card_brand_ext.dart';
+import 'package:example/models/product_type_ext.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/models/product.dart';
-import 'package:pan_scrapper/models/product_type.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -16,20 +17,20 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(product.number),
-            Text(
-              product.name,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            Text(product.name, style: Theme.of(context).textTheme.titleMedium),
+
+            Row(
+              children: [
+                Text(product.type.label),
+                if (product.cardBrand != null) ...[
+                  Text(' (${product.cardBrand?.label}) '),
+                ],
+                if (product.cardLast4Digits != null) ...[
+                  Text(' **** ${product.cardLast4Digits}'),
+                ],
+              ],
             ),
 
-            if (product.type == ProductType.creditCard) ...[
-              Row(
-                children: [
-                  Text(
-                    'Tarjeta ${product.cardLast4Digits ?? ''} ${product.cardBrand?.name ?? ''} ',
-                  ),
-                ],
-              ),
-            ],
             if (product.availableAmount != null) ...[
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

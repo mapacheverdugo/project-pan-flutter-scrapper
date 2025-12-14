@@ -1,1 +1,8 @@
-enum Institution { bci, santander, scotiabank }
+enum Institution {
+  bci,
+  santander,
+  scotiabank,
+  bancoChile,
+  itau,
+  bancoFalabella,
+}

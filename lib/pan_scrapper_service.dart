@@ -31,10 +31,19 @@ class PanScrapperService {
       case Institution.scotiabank:
         _client = ClScotiabankPersonasConnectionService(_dio, _getWebview);
         break;
+      case Institution.bancoChile:
+        _client = ClBancoChilePersonasConnectionService(_dio, _getWebview);
+        break;
+      case Institution.itau:
+        _client = ClItauPersonasConnectionService(_dio, _getWebview);
+        break;
+      case Institution.bancoFalabella:
+        _client = ClBancoFalabellaPersonasConnectionService(_dio, _getWebview);
+        break;
     }
   }
 
-  Future<WebviewInstance> _getWebview() async {
+  Future<WebviewInstance> _getWebview({String? cookies}) async {
     return await Webview.run(
       headless: headless,
       context: context,

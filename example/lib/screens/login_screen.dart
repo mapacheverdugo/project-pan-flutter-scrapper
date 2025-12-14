@@ -1,3 +1,4 @@
+import 'package:example/models/access_credentials.dart';
 import 'package:example/widget/rut_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
@@ -54,7 +55,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             _passwordController.text,
                           );
                           if (context.mounted) {
-                            Navigator.pop(context, credentials);
+                            Navigator.pop(
+                              context,
+                              AccessCredentials(
+                                username: _usernameController.text,
+                                password: _passwordController.text,
+                                resultCredentials: credentials,
+                              ),
+                            );
                           }
                         },
                         child: Text('Login'),

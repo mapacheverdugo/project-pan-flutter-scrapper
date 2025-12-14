@@ -1,4 +1,5 @@
-import 'package:example/screens/institution_details_screen.dart';
+import 'package:example/models/access_credentials.dart';
+import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/models/institution.dart';
@@ -45,11 +46,13 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       );
 
-                      if (credentials != null && context.mounted) {
+                      if (credentials != null &&
+                          credentials is AccessCredentials &&
+                          context.mounted) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => InstitutionDetailsScreen(
+                            builder: (context) => ConnectionDetailsScreen(
                               service: service,
                               credentials: credentials,
                             ),
