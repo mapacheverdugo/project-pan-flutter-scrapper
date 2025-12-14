@@ -170,30 +170,9 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   @override
   Future<List<Product>> getProducts(String cookiesString) async {
     try {
-      // Get raw products
-      final rawProductsJson = await _getRawProducts(cookiesString);
-      final rawProducts = ClBancoChilePersonasProductsResponseModel.fromJson(
-        rawProductsJson,
-      );
-
-      // Get depositary balances
-      final depositaryBalancesJson = await _getDepositaryBalances(
-        cookiesString,
-      );
-      final depositaryBalances = depositaryBalancesJson
-          .map(
-            (e) =>
-                ClBancoChilePersonasDepositaryBalancesResponseModel.fromJson(e),
-          )
-          .toList();
-
-      // Get cards balances
-      final cardsBalancesJson = await _getCardsBalances(cookiesString);
-      final cardsBalances = cardsBalancesJson
-          .map(
-            (e) => ClBancoChilePersonasCardsBalancesResponseModel.fromJson(e),
-          )
-          .toList();
+      final rawProducts = await _getRawProducts(cookiesString);
+      final depositaryBalances = await _getDepositaryBalances(cookiesString);
+      final cardsBalances = await _getCardsBalances(cookiesString);
 
       // Map to Product models
       return ClBancoChilePersonasProductMapper.fromProductsAndBalances(
@@ -208,7 +187,9 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   /// Gets raw products
-  Future<Map<String, dynamic>> _getRawProducts(String cookiesString) async {
+  Future<ClBancoChilePersonasProductsResponseModel> _getRawProducts(
+    String cookiesString,
+  ) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/selectorproductos/selectorProductos/obtenerProductos?incluirTarjetas=true',
@@ -222,7 +203,9 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         ),
       );
 
-      return response.data ?? {};
+      return ClBancoChilePersonasProductsResponseModel.fromJson(
+        response.data ?? {},
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode != null &&
           e.response!.statusCode! >= 300 &&
@@ -235,9 +218,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   /// Gets depositary balances
-  Future<List<Map<String, dynamic>>> _getDepositaryBalances(
-    String cookiesString,
-  ) async {
+  Future<List<ClBancoChilePersonasDepositaryBalancesResponseModel>>
+  _getDepositaryBalances(String cookiesString) async {
     try {
       final response = await _dio.get<List<dynamic>>(
         'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/bff-pp-prod-ctas-saldos/productos/cuentas/saldos',
@@ -254,7 +236,12 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         return [];
       }
 
-      return response.data!.map((e) => e as Map<String, dynamic>).toList();
+      return response.data!
+          .map(
+            (e) =>
+                ClBancoChilePersonasDepositaryBalancesResponseModel.fromJson(e),
+          )
+          .toList();
     } catch (e) {
       log('Error fetching BancoChile depositary balances: $e');
       rethrow;
@@ -262,9 +249,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   /// Gets cards balances
-  Future<List<Map<String, dynamic>>> _getCardsBalances(
-    String cookiesString,
-  ) async {
+  Future<List<ClBancoChilePersonasCardsBalancesResponseModel>>
+  _getCardsBalances(String cookiesString) async {
     try {
       final response = await _dio.post<List<dynamic>>(
         'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/tarjetas/widget/saldos-tarjetas',
@@ -282,7 +268,11 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         return [];
       }
 
-      return response.data!.map((e) => e as Map<String, dynamic>).toList();
+      return response.data!
+          .map(
+            (e) => ClBancoChilePersonasCardsBalancesResponseModel.fromJson(e),
+          )
+          .toList();
     } catch (e) {
       log('Error fetching BancoChile card balances: $e');
       rethrow;

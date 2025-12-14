@@ -1,6 +1,7 @@
 import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/models/available_amount.dart';
+import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/models/product_type.dart';
@@ -8,24 +9,76 @@ import 'package:pan_scrapper/services/models/cl_scotiabank_personas/card_with_de
 import 'package:pan_scrapper/services/models/cl_scotiabank_personas/index.dart';
 
 class ClScotiabankPersonasProductMapper {
+  static CardBrand _getCardBrand(String description) {
+    if (description.toLowerCase().contains('visa')) {
+      return CardBrand.visa;
+    } else if (description.toLowerCase().contains('mastercard')) {
+      return CardBrand.mastercard;
+    } else if (description.toLowerCase().contains('american express')) {
+      return CardBrand.amex;
+    } else if (description.toLowerCase().contains('diners')) {
+      return CardBrand.diners;
+    }
+    return CardBrand.other;
+  }
+
+  static ProductType _getProductType(String type) {
+    switch (type) {
+      case 'CTACTE':
+        return ProductType.depositaryAccount;
+      case 'LICRED':
+        return ProductType.depositaryAccountCreditLine;
+      default:
+        return ProductType.unknown;
+    }
+  }
+
   static List<Product> fromDepositaryAccounts(
     List<ClScotiabankPersonasDepositaryAccountResponseModel> accounts,
   ) {
     return accounts.map((account) {
+      final productType = _getProductType(account.type);
+
+      final currency = account.currencyCode;
+      final options = currency == 'CLP'
+          ? _nationalOptions
+          : _internationalOptions;
+
+      final availableAmount = Amount.parse(
+        account.amountAvailable,
+        options,
+      ).value!;
+
+      final creditLimitAmount = Amount.parse(
+        account.totalBalance,
+        options,
+      ).value!;
+
+      final usedAmount = creditLimitAmount - availableAmount;
+
+      final creditBalances = <CreditBalance>[];
+      if (productType == ProductType.depositaryAccountCreditLine) {
+        creditBalances.add(
+          CreditBalance(
+            creditLimitAmount: creditLimitAmount.toInt(),
+            availableAmount: availableAmount.toInt(),
+            usedAmount: usedAmount.toInt(),
+            currency: currency,
+          ),
+        );
+      }
+
       return Product(
-        number: removeEverythingButNumbers(account.displayId ?? ''),
-        name: account.description ?? '',
-        type: ProductType.depositaryAccount,
-        availableAmount:
-            account.amountAvailable != null && account.currencyCode != null
+        number: removeEverythingButNumbers(account.displayId),
+        name: account.description,
+        type: productType,
+        availableAmount: creditBalances.isEmpty
             ? AvailableAmount(
-                amount: Amount.parse(
-                  account.amountAvailable!,
-                  _nationalOptions,
-                ).value!.toInt(),
-                currency: account.currencyCode!,
+                amount: availableAmount.toInt(),
+                currency: currency,
               )
             : null,
+        creditBalances: creditBalances,
         isForSecondaryCardHolder: false,
       );
     }).toList();
@@ -89,8 +142,9 @@ class ClScotiabankPersonasProductMapper {
       }
       return Product(
         number: cardId,
-        name: card.description ?? '',
+        name: card.description,
         type: ProductType.creditCard,
+        cardBrand: _getCardBrand(card.description),
         cardLast4Digits: last4Digits.isNotEmpty ? last4Digits : null,
         creditBalances: creditBalances.isNotEmpty ? creditBalances : null,
         isForSecondaryCardHolder: false,

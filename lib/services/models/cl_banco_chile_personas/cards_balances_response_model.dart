@@ -1,40 +1,58 @@
 class ClBancoChilePersonasCardsBalancesResponseModel {
-  final String? id;
-  final String? numero;
-  final String? mascara;
-  final String? descripcionLogo;
-  final String? tarjetaHabiente;
-  final String? codigoMoneda;
-  final String? cupoTotal;
-  final String? cupoDisponible;
-  final String? cupoUtilizado;
-
   ClBancoChilePersonasCardsBalancesResponseModel({
-    this.id,
-    this.numero,
-    this.mascara,
-    this.descripcionLogo,
-    this.tarjetaHabiente,
-    this.codigoMoneda,
-    this.cupoTotal,
-    this.cupoDisponible,
-    this.cupoUtilizado,
+    required this.titular,
+    required this.marca,
+    required this.tipo,
+    required this.idProducto,
+    required this.numero,
+    required this.cupos,
   });
+
+  final bool? titular;
+  final String? marca;
+  final String? tipo;
+  final String idProducto;
+  final String? numero;
+  final List<ClBancoChilePersonasCardsBalancesCupo> cupos;
 
   factory ClBancoChilePersonasCardsBalancesResponseModel.fromJson(
     Map<String, dynamic> json,
   ) {
     return ClBancoChilePersonasCardsBalancesResponseModel(
-      id: json['id'] as String?,
-      numero: json['numero'] as String?,
-      mascara: json['mascara'] as String?,
-      descripcionLogo: json['descripcionLogo'] as String?,
-      tarjetaHabiente: json['tarjetaHabiente'] as String?,
-      codigoMoneda: json['codigoMoneda'] as String?,
-      cupoTotal: json['cupoTotal'] as String?,
-      cupoDisponible: json['cupoDisponible'] as String?,
-      cupoUtilizado: json['cupoUtilizado'] as String?,
+      titular: json["titular"],
+      marca: json["marca"],
+      tipo: json["tipo"],
+      idProducto: json["idProducto"],
+      numero: json["numero"],
+      cupos: json["cupos"] == null
+          ? []
+          : List<ClBancoChilePersonasCardsBalancesCupo>.from(
+              json["cupos"]!.map(
+                (x) => ClBancoChilePersonasCardsBalancesCupo.fromJson(x),
+              ),
+            ),
     );
   }
 }
 
+class ClBancoChilePersonasCardsBalancesCupo {
+  ClBancoChilePersonasCardsBalancesCupo({
+    required this.moneda,
+    required this.disponible,
+    required this.cupo,
+  });
+
+  final String moneda;
+  final double disponible;
+  final num cupo;
+
+  factory ClBancoChilePersonasCardsBalancesCupo.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return ClBancoChilePersonasCardsBalancesCupo(
+      moneda: json["moneda"],
+      disponible: json["disponible"],
+      cupo: json["cupo"],
+    );
+  }
+}

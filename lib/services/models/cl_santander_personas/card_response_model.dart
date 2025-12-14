@@ -150,7 +150,7 @@ class ClSantanderPersonasCardDetalleConsultaTarjeta {
   final String? limiteDolares;
   final String? imagen;
   final String? flagOfertable;
-  final String? glosaProducto;
+  final String glosaProducto;
   final String? titular;
   final String? beneficiario;
   final String? estadoTarjeta;

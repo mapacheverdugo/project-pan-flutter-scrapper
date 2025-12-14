@@ -18,48 +18,68 @@ class ClBancoChilePersonasProductsResponseModel {
       productos: json['productos'] == null
           ? []
           : (json['productos'] as List<dynamic>)
-              .map((e) =>
-                  ClBancoChilePersonasProducto.fromJson(e as Map<String, dynamic>))
-              .toList(),
+                .map(
+                  (e) => ClBancoChilePersonasProducto.fromJson(
+                    e as Map<String, dynamic>,
+                  ),
+                )
+                .toList(),
     );
   }
 }
 
 class ClBancoChilePersonasProducto {
-  final String? id;
-  final String? codigo;
-  final String? numero;
-  final String? mascara;
-  final String? descripcionLogo;
-  final String? tarjetaHabiente;
-  final String? tipoCliente;
-  final String? claseCuenta;
-  final String? codigoMoneda;
-
   ClBancoChilePersonasProducto({
-    this.id,
-    this.codigo,
-    this.numero,
-    this.mascara,
-    this.descripcionLogo,
-    this.tarjetaHabiente,
-    this.tipoCliente,
-    this.claseCuenta,
-    this.codigoMoneda,
+    required this.id,
+    required this.numero,
+    required this.mascara,
+    required this.codigo,
+    required this.codigoMoneda,
+    required this.alias,
+    required this.label,
+    required this.tipo,
+    required this.claseCuenta,
+    required this.subProducto,
+    required this.estado,
+    required this.detalleEstado,
+    required this.tarjetaHabiente,
+    required this.descripcionLogo,
+    required this.tipoCliente,
   });
+
+  final String id;
+  final String numero;
+  final String mascara;
+  final String codigo;
+  final String codigoMoneda;
+  final String? alias;
+  final String label;
+  final String tipo;
+  final String? claseCuenta;
+  final String? subProducto;
+  final String? estado;
+  final String? detalleEstado;
+  final String? tarjetaHabiente;
+  final String? descripcionLogo;
+  final String? tipoCliente;
 
   factory ClBancoChilePersonasProducto.fromJson(Map<String, dynamic> json) {
     return ClBancoChilePersonasProducto(
-      id: json['id'] as String?,
-      codigo: json['codigo'] as String?,
-      numero: json['numero'] as String?,
-      mascara: json['mascara'] as String?,
-      descripcionLogo: json['descripcionLogo'] as String?,
-      tarjetaHabiente: json['tarjetaHabiente'] as String?,
-      tipoCliente: json['tipoCliente'] as String?,
-      claseCuenta: json['claseCuenta'] as String?,
-      codigoMoneda: json['codigoMoneda'] as String?,
+      id: json["id"],
+      numero: json["numero"],
+      mascara: json["mascara"],
+      codigo: json["codigo"],
+      codigoMoneda: json["codigoMoneda"],
+      alias: json["alias"],
+      label: json["label"],
+      tipo: json["tipo"],
+      claseCuenta: json["claseCuenta"],
+      subProducto: json["subProducto"],
+      estado: json["estado"],
+      detalleEstado: json["detalleEstado"],
+      tarjetaHabiente: json["tarjetaHabiente"],
+      descripcionLogo: json["descripcionLogo"],
+      tipoCliente: json["tipoCliente"],
     );
   }
 }
-

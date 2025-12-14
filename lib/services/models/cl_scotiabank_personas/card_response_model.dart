@@ -9,10 +9,10 @@ class ClScotiabankPersonasCardResponseModel {
     required this.isCardDisabledByFraudLaw,
   });
 
-  final String? key;
+  final String key;
   final String? type;
   final String? code;
-  final String? description;
+  final String description;
   final String? id;
   final dynamic iconName;
   final bool? isCardDisabledByFraudLaw;

@@ -10,13 +10,13 @@ class ClScotiabankPersonasDepositaryAccountResponseModel {
     required this.iconName,
   });
 
-  final String? key;
-  final String? displayId;
-  final String? type;
-  final String? description;
-  final String? currencyCode;
-  final String? totalBalance;
-  final String? amountAvailable;
+  final String key;
+  final String displayId;
+  final String type;
+  final String description;
+  final String currencyCode;
+  final String totalBalance;
+  final String amountAvailable;
   final String? iconName;
 
   factory ClScotiabankPersonasDepositaryAccountResponseModel.fromJson(

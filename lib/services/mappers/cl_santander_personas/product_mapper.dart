@@ -22,6 +22,19 @@ class ClSantanderPersonasProductMapper {
     }
   }
 
+  static CardBrand _getCardBrand(String descripcion) {
+    if (descripcion.toLowerCase().contains('visa')) {
+      return CardBrand.visa;
+    } else if (descripcion.toLowerCase().contains('mastercard')) {
+      return CardBrand.mastercard;
+    } else if (descripcion.toLowerCase().contains('american express')) {
+      return CardBrand.amex;
+    } else if (descripcion.toLowerCase().contains('diners')) {
+      return CardBrand.diners;
+    }
+    return CardBrand.other;
+  }
+
   static List<Product> fromProductsResponseAndCardResponse(
     ClSantanderPersonasProductsResponse productsResponse,
     ClSantanderPersonasCardResponse cardResponse,
@@ -121,10 +134,10 @@ class ClSantanderPersonasProductMapper {
               Product(
                 number: productId,
                 name: titleCase(
-                  glosaCorta?.toLowerCase() ?? card.glosaProducto ?? '',
+                  glosaCorta?.toLowerCase() ?? card.glosaProducto,
                 ),
                 type: _getProductType(agrupacionComercial),
-                cardBrand: CardBrand.other,
+                cardBrand: _getCardBrand(card.glosaProducto),
                 cardLast4Digits: numeroPan.length >= 4
                     ? numeroPan.substring(numeroPan.length - 4)
                     : numeroPan,
@@ -140,10 +153,37 @@ class ClSantanderPersonasProductMapper {
             final options = currency == 'CLP'
                 ? _nationalOptions
                 : _internationalOptions;
-            final montoDisponible = Amount.parse(
-              products.first.montodisponible!,
+
+            final availableAmount = Amount.parse(
+              products.first.montodisponible,
               options,
             ).value;
+            final usedAmount = Amount.parse(
+              products.first.montoutilizado,
+              options,
+            ).value;
+            final creditLimitAmount = Amount.parse(
+              products.first.cupo,
+              options,
+            ).value;
+
+            final creditBalances = <CreditBalance>[];
+            if (creditLimitAmount != 0 &&
+                creditLimitAmount != null &&
+                availableAmount != 0 &&
+                availableAmount != null &&
+                usedAmount != 0 &&
+                usedAmount != null &&
+                currency != null) {
+              creditBalances.add(
+                CreditBalance(
+                  creditLimitAmount: creditLimitAmount.toInt(),
+                  availableAmount: availableAmount.toInt(),
+                  usedAmount: usedAmount.toInt(),
+                  currency: currency,
+                ),
+              );
+            }
 
             ProductType productType = _getProductType(agrupacionComercial);
 
@@ -152,11 +192,13 @@ class ClSantanderPersonasProductMapper {
                 number: productId,
                 name: titleCase(glosaCorta?.toLowerCase() ?? ''),
                 type: productType,
-                availableAmount: AvailableAmount(
-                  amount: montoDisponible!.toInt(),
-                  currency: currency ?? 'CLP',
-                ),
-                creditBalances: [],
+                availableAmount: creditBalances.isEmpty
+                    ? AvailableAmount(
+                        amount: availableAmount!.toInt(),
+                        currency: currency ?? 'CLP',
+                      )
+                    : null,
+                creditBalances: creditBalances,
                 isForSecondaryCardHolder: false,
               ),
             );
