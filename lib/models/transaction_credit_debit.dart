@@ -1,0 +1,5 @@
+enum TransactionCreditDebit {
+  credit,
+  debit,
+}
+

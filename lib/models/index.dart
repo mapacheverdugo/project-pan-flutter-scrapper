@@ -1,9 +1,18 @@
 export 'available_amount.dart';
+export 'billing_status.dart';
 export 'card_brand.dart';
 export 'credit_balance.dart';
+export 'credit_card_bill.dart';
+export 'credit_card_bill_period.dart';
+export 'credit_card_bill_summary.dart';
+export 'currency_type.dart';
 export 'institution.dart';
 export 'product.dart';
 export 'product_type.dart';
+export 'transaction.dart';
+export 'transaction_amount.dart';
+export 'transaction_credit_debit.dart';
+export 'transaction_type.dart';
 
 
 
