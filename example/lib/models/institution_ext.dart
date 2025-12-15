@@ -15,6 +15,8 @@ extension InstitutionExtension on Institution {
         return 'Itau';
       case Institution.bancoFalabella:
         return 'Banco Falabella';
+      case Institution.bancoEstado:
+        return 'Banco Estado';
     }
   }
 }

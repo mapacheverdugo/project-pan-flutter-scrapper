@@ -40,6 +40,9 @@ class PanScrapperService {
       case Institution.bancoFalabella:
         _client = ClBancoFalabellaPersonasConnectionService(_dio, _getWebview);
         break;
+      case Institution.bancoEstado:
+        _client = ClBancoEstadoPersonasConnectionService(_dio, _getWebview);
+        break;
     }
   }
 

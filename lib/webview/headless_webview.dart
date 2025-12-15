@@ -16,8 +16,7 @@ class HeadlessWebview implements WebviewInstance {
   final Map<RegExp, Future<AjaxRequestAction> Function(AjaxRequest request)>
   _ajaxResponseInterceptor = {};
   final Map<RegExp, VoidCallback> _loadResourceListeners = {};
-  final Map<RegExp,
-      Future<NavigationActionPolicy?> Function(NavigationAction)>
+  final Map<RegExp, Future<NavigationActionPolicy?> Function(NavigationAction)>
   _shouldOverrideUrlLoadingListeners = {};
   bool _isInitialized = false;
 
@@ -61,9 +60,10 @@ class HeadlessWebview implements WebviewInstance {
       ),
       shouldOverrideUrlLoading: (controller, navigationAction) =>
           shouldOverrideUrlLoading(
-        navigationAction,
-        shouldOverrideUrlLoadingListeners: _shouldOverrideUrlLoadingListeners,
-      ),
+            navigationAction,
+            shouldOverrideUrlLoadingListeners:
+                _shouldOverrideUrlLoadingListeners,
+          ),
       onLoadStop: (controller, url) {
         log("onLoadStop: $url");
 

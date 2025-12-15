@@ -1,4 +1,5 @@
 import 'package:example/models/access_credentials.dart';
+import 'package:example/models/institution_ext.dart';
 import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class _MainScreenState extends State<MainScreen> {
                   return GestureDetector(
                     child: Card(
                       child: ListTile(
-                        title: Text(Institution.values[index].name),
+                        title: Text(Institution.values[index].label),
                       ),
                     ),
                     onTap: () async {

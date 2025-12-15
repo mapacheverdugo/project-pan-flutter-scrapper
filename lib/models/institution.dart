@@ -5,4 +5,5 @@ enum Institution {
   bancoChile,
   itau,
   bancoFalabella,
+  bancoEstado,
 }
