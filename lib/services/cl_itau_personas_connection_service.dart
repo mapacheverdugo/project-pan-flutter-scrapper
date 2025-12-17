@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:typed_data';
 
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart'
+    hide CookieManager;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 import 'package:pan_scrapper/helpers/amount_helpers.dart';
@@ -773,7 +776,332 @@ class ClItauPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError('Itau credit card bill periods not implemented');
+    try {
+      final commonHeaders = <String, String>{
+        'Cookie': credentials,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer':
+            'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/deuda',
+        'Origin': 'https://banco.itau.cl',
+      };
+
+      // Get periods for both nacional and internacional
+      final nacionalPeriods = await _getPeriodsForCurrencyType(
+        credentials,
+        productId,
+        'nacional',
+        commonHeaders,
+      );
+
+      final internacionalPeriods = await _getPeriodsForCurrencyType(
+        credentials,
+        productId,
+        'internacional',
+        commonHeaders,
+      );
+
+      return [...nacionalPeriods, ...internacionalPeriods];
+    } catch (e) {
+      log('Itau get credit card bill periods error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<CreditCardBillPeriod>> _getPeriodsForCurrencyType(
+    String credentials,
+    String productId,
+    String currencyType, // 'nacional' or 'internacional'
+    Map<String, String> commonHeaders,
+  ) async {
+    final periods = <CreditCardBillPeriod>[];
+    const maxEmptyPeriods = 0; // Stop at first empty period
+
+    final cookieJar = CookieJar();
+    _dio.interceptors.add(CookieManager(cookieJar));
+
+    await _dio.get(
+      'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-$currencyType',
+      options: Options(headers: commonHeaders),
+    );
+
+    // Initial request to get the page
+    final baseUrl =
+        'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/cuenta-$currencyType';
+    final initialResponse = await _dio.post(
+      baseUrl,
+      data: {'cuentaIdSelected': productId},
+      options: Options(
+        headers: commonHeaders,
+        contentType: Headers.formUrlEncodedContentType,
+        responseType: ResponseType.plain,
+      ),
+    );
+
+    final initialHtml = initialResponse.data.toString();
+    final initialDoc = parse(initialHtml);
+
+    // Extract the initial period from resultShow input
+    final resultShowInput = initialDoc.querySelector('#resultShow');
+    if (resultShowInput == null) {
+      log('Itau: no se encontró el input resultShow para $currencyType');
+      return periods;
+    }
+
+    final initialPeriodValue = (resultShowInput.attributes['value'] ?? '')
+        .trim();
+    if (initialPeriodValue.isEmpty) {
+      log('Itau: resultShow está vacío para $currencyType');
+      return periods;
+    }
+
+    // Parse initial period (format: "MM / YYYY")
+    final initialPeriod = _parsePeriod(initialPeriodValue);
+    if (initialPeriod == null) {
+      log('Itau: no se pudo parsear el periodo inicial: $initialPeriodValue');
+      return periods;
+    }
+
+    // Extract form action URL from the page
+    // Also get the actual response URL which contains the portal path
+    final responseUrl = initialResponse.realUri.toString();
+    final formActionUrl = _extractFormActionUrl(
+      initialDoc,
+      currencyType,
+      responseUrl,
+    );
+    if (formActionUrl == null) {
+      log('Itau: no se encontró la URL del form action para $currencyType');
+      return periods;
+    }
+
+    // Check initial period
+    final hasData = !_hasSinDatos(initialDoc);
+    if (hasData) {
+      final period = _createBillPeriod(
+        productId,
+        initialPeriod.month,
+        initialPeriod.year,
+        currencyType,
+      );
+      periods.add(period);
+    } else {
+      // If initial period is empty, stop
+      return periods;
+    }
+
+    // Navigate backwards month by month
+    var currentMonth = initialPeriod.month;
+    var currentYear = initialPeriod.year;
+    var emptyCount = 0;
+
+    while (emptyCount <= maxEmptyPeriods) {
+      // Calculate previous month
+      if (currentMonth == 1) {
+        currentMonth = 12;
+        currentYear--;
+      } else {
+        currentMonth--;
+      }
+
+      // Check if this period has data
+      final periodHasData = await _checkPeriodHasData(
+        credentials,
+        formActionUrl,
+        currentMonth,
+        currentYear,
+        currencyType,
+        commonHeaders,
+      );
+
+      if (periodHasData) {
+        final period = _createBillPeriod(
+          productId,
+          currentMonth,
+          currentYear,
+          currencyType,
+        );
+        periods.add(period);
+        emptyCount = 0; // Reset empty count
+      } else {
+        emptyCount++;
+        if (emptyCount > maxEmptyPeriods) {
+          break;
+        }
+      }
+    }
+
+    return periods;
+  }
+
+  bool _hasSinDatos(Document doc) {
+    final contenido = doc.querySelector('#contenido');
+    if (contenido == null) return true;
+    final sinDatos = contenido.querySelector('#sinDatos');
+    return sinDatos != null;
+  }
+
+  Future<bool> _checkPeriodHasData(
+    String credentials,
+    String formActionUrl,
+    int month,
+    int year,
+    String currencyType,
+    Map<String, String> commonHeaders,
+  ) async {
+    try {
+      // Format: "MM / YYYY"
+      final resultShow = '${month.toString().padLeft(2, '0')} / $year';
+      // Format: YYYYMMDD (using last day of month)
+      final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+      final periodo =
+          '${year}${month.toString().padLeft(2, '0')}${lastDayOfMonth.toString().padLeft(2, '0')}';
+      // Format: YYYYMM
+      final fecha = '${year}${month.toString().padLeft(2, '0')}';
+
+      // Build the event parameter based on currency type
+      final eventParam = currencyType == 'nacional'
+          ? 'portlets%2Ftarjeta_credito%2Festado%2FEstadoDeudaNacionalPortlet%21fireEvent%3AForm%3Aip_filtroMesAnoPeriodo_SaveDataSubmitEvent'
+          : 'portlets%2Ftarjeta_credito%2Festado%2FEstadoDeudaInternacionalPortlet%21fireEvent%3AForm%3Aip_filtroMesAnoPeriodo_SaveDataSubmitEvent';
+
+      final actionParam = currencyType == 'nacional'
+          ? 'al_cambiaPeriodoSeleccionado'
+          : 'ljo_getDate.filtroPeriodos';
+
+      // Build the full URL with parameters
+      // The formActionUrl should already contain the portal path
+      // We need to append the portal-specific parameters
+      // Construct the full URL with portal parameters
+      // The pattern from curl examples shows: basePath/!ut/p/z1/.../p0/...==/
+      // We append the action parameters
+      final separator = formActionUrl.contains('?') ? '&' : '?';
+      final fullUrl =
+          '$formActionUrl${separator}_bowStEvent=$eventParam&bf_action%21$actionParam=bf_keep%21true=bf_model%21${_generateModelId(currencyType)}==/';
+
+      final requestHeaders = Map<String, String>.from(commonHeaders);
+      requestHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      requestHeaders['Accept'] = '*/*';
+      requestHeaders['Sec-Fetch-Dest'] = 'empty';
+      requestHeaders['Sec-Fetch-Mode'] = 'cors';
+      requestHeaders['Sec-Fetch-Site'] = 'same-origin';
+
+      final data = {
+        'resultShow': resultShow,
+        'periodo': periodo,
+        'fecha': fecha,
+        '_bowStEvent':
+            'portlets/tarjeta_credito/estado/EstadoDeudaNacionalPortlet\u0021fireEvent:Form:ip_filtroMesAnoPeriodo_SaveDataSubmitEvent',
+      };
+
+      final response = await _dio.post(
+        fullUrl,
+        data: data,
+        options: Options(
+          headers: requestHeaders,
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+
+      final html = response.data.toString();
+      final doc = parse(html);
+      return !_hasSinDatos(doc);
+    } catch (e) {
+      log('Itau: error checking period $month/$year for $currencyType: $e');
+      return false;
+    }
+  }
+
+  String _generateModelId(String currencyType) {
+    // Generate a random model ID matching the format from curl examples
+    // Format: [11-char-hex]_portletsQCPtarjeta_creditoQCPestadoQCPEstadoDeuda[Nacional|Internacional]Portlet
+    final random = DateTime.now().millisecondsSinceEpoch;
+    final randomHex = random
+        .toRadixString(16)
+        .padLeft(11, '0')
+        .substring(0, 11);
+    final portletName = currencyType == 'nacional'
+        ? 'EstadoDeudaNacionalPortlet'
+        : 'EstadoDeudaInternacionalPortlet';
+    return '${randomHex}_portletsQCPtarjeta_creditoQCPestadoQCP$portletName';
+  }
+
+  String? _extractFormActionUrl(
+    Document doc,
+    String currencyType,
+    String responseUrl,
+  ) {
+    // The responseUrl contains the full portal URL, use it as base
+    // Try to find a form or link that contains the action URL
+    final forms = doc.querySelectorAll('form[action*="cuenta-$currencyType"]');
+    if (forms.isNotEmpty) {
+      final action = forms.first.attributes['action'];
+      if (action != null && action.isNotEmpty) {
+        if (action.startsWith('http')) {
+          return action;
+        } else if (action.startsWith('/')) {
+          return 'https://banco.itau.cl$action';
+        } else {
+          // Relative URL, append to response URL base
+          final uri = Uri.parse(responseUrl);
+          final base = '${uri.scheme}://${uri.host}${uri.path}';
+          return '$base/$action';
+        }
+      }
+    }
+
+    // Try to find links with the portal URL pattern
+    final links = doc.querySelectorAll('a[href*="cuenta-$currencyType"]');
+    for (final link in links) {
+      final href = link.attributes['href'];
+      if (href != null && href.contains('!ut/p/')) {
+        return href.startsWith('http') ? href : 'https://banco.itau.cl$href';
+      }
+    }
+
+    // Use the response URL as base (it should contain the portal path)
+    // Remove query parameters and fragment
+    final uri = Uri.parse(responseUrl);
+    return '${uri.scheme}://${uri.host}${uri.path}';
+  }
+
+  _Period? _parsePeriod(String periodStr) {
+    // Format: "MM / YYYY" or "M / YYYY"
+    final parts = periodStr.split('/').map((e) => e.trim()).toList();
+    if (parts.length != 2) return null;
+
+    final month = int.tryParse(parts[0]);
+    final year = int.tryParse(parts[1]);
+
+    if (month == null || year == null) return null;
+    if (month < 1 || month > 12) return null;
+
+    return _Period(month: month, year: year);
+  }
+
+  CreditCardBillPeriod _createBillPeriod(
+    String productId,
+    int month,
+    int year,
+    String currencyType,
+  ) {
+    // Use first day of the month as startDate
+    final startDate = '${year}-${month.toString().padLeft(2, '0')}-01';
+    final currency = currencyType == 'nacional' ? 'CLP' : 'USD';
+    final currencyTypeEnum = currencyType == 'nacional'
+        ? CurrencyType.national
+        : CurrencyType.international;
+
+    final periodId = '$productId|$startDate|${currencyTypeEnum.name}';
+
+    return CreditCardBillPeriod(
+      id: periodId,
+      startDate: startDate,
+      endDate: null,
+      currency: currency,
+      currencyType: currencyTypeEnum,
+    );
   }
 
   @override
@@ -817,4 +1145,11 @@ class _AccountMeta {
     required this.accountMaskedNumber,
     required this.currency,
   });
+}
+
+class _Period {
+  final int month;
+  final int year;
+
+  _Period({required this.month, required this.year});
 }
