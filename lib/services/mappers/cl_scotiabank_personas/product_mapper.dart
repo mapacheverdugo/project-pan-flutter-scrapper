@@ -69,6 +69,7 @@ class ClScotiabankPersonasProductMapper {
       }
 
       return Product(
+        id: account.displayId,
         number: removeEverythingButNumbers(account.displayId),
         name: account.description,
         type: productType,
@@ -141,6 +142,7 @@ class ClScotiabankPersonasProductMapper {
         );
       }
       return Product(
+        id: cardId,
         number: cardId,
         name: card.description,
         type: ProductType.creditCard,

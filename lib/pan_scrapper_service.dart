@@ -61,4 +61,18 @@ class PanScrapperService {
   Future<List<Product>> getProducts(String credentials) async {
     return _client.getProducts(credentials);
   }
+
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    return _client.getDepositaryAccountTransactions(credentials, productId);
+  }
+
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    return _client.getCreditCardBillPeriods(credentials, productId);
+  }
 }

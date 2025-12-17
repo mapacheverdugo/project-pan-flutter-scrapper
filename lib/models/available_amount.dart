@@ -15,3 +15,4 @@ class AvailableAmount {
     return {'currency': currency, 'amount': amount};
   }
 }
+

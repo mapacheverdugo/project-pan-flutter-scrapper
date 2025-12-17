@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:pan_scrapper/models/product.dart';
+import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/services/mappers/cl_santander_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
@@ -307,6 +308,276 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
       return ClSantanderPersonasProductsResponse.fromJson(responseData);
     } catch (e) {
       log('Error fetching products: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError(
+      'Santander depositary account transactions not implemented',
+    );
+  }
+
+  @override
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    try {
+      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
+      final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
+      final jwt = tokenModel.tokenJwt;
+
+      final properties = await _getProperties(await _webviewFactory());
+
+      final usuarioAlt = properties.usuarioAlt;
+      final canalId = properties.canal;
+      final numeroServidor = properties.nroSer;
+
+      // Parse productId - format is entityId_centerId_contractId
+      final productParts = productId.split('_');
+      if (productParts.length < 3) {
+        throw Exception('Invalid product ID format');
+      }
+      final numero = productParts[0];
+      final centalt = productParts[3];
+      final codent = productParts[4];
+
+      final requestBody = {
+        'cabecera': {
+          'HOST': {
+            'USUARIO-ALT': usuarioAlt,
+            'TERMINAL-ALT': '',
+            'CANAL-ID': canalId,
+          },
+          'CanalFisico': '',
+          'CanalLogico': '',
+          'RutCliente': rut,
+          'RutUsuario': rut,
+          'InfoDispositivo': 'InfoDispositivo',
+          'InfoGeneral': {'NumeroServidor': numeroServidor},
+        },
+        'INPUT': {
+          'USUARIO-ALT': usuarioAlt,
+          'CANAL-ID': canalId,
+          'CODENT': codent,
+          'CENTALT': centalt,
+          'CUENTA': numero,
+          'PAN': '',
+        },
+      };
+
+      final headers = {
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'es-419,es;q=0.6',
+        'content-type': 'application/json',
+        'origin': 'https://movil.santander.cl',
+        'referer': 'https://movil.santander.cl/',
+        'access-token': jwt,
+      };
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        'https://apiper.santander.cl/permov/tarjetasDeCredito/cuentasDisponibles',
+        data: requestBody,
+        options: Options(headers: headers),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Empty response from bill periods API');
+      }
+
+      final metadata = responseData['METADATA'] as Map<String, dynamic>?;
+      if (metadata != null && metadata['STATUS'] == '101') {
+        throw Exception('Credentials expired - needs reauth');
+      }
+
+      // Parse response
+      final data = responseData['DATA'] as Map<String, dynamic>?;
+      final asTib =
+          data?['AS_TIB_WM01_CONCuentasDisponibles'] as Map<String, dynamic>?;
+      final output = asTib?['OUTPUT'] as Map<String, dynamic>?;
+      final matriz = output?['MATRIZ'] as List<dynamic>?;
+
+      if (matriz == null) {
+        return [];
+      }
+
+      final periods = <CreditCardBillPeriod>[];
+      for (final period in matriz) {
+        final periodMap = period as Map<String, dynamic>;
+        final moneda = periodMap['MONEDA'] as String?;
+        final fechaExt = periodMap['FECHAEXT'] as String?;
+        final numExt = periodMap['NUMEXT'] as String?;
+
+        if (moneda == null || fechaExt == null || numExt == null) {
+          continue;
+        }
+
+        // Convert ISO number to currency code
+        final currencyCode = _getCurrencyFromIsoNumber(
+          int.tryParse(moneda) ?? 0,
+        );
+        final currencyType = currencyCode == 'CLP'
+            ? CurrencyType.national
+            : CurrencyType.international;
+
+        final periodId = '${currencyType.name}_$numExt';
+
+        periods.add(
+          CreditCardBillPeriod(
+            id: periodId,
+            startDate: fechaExt,
+            endDate: null,
+            currency: currencyCode,
+            currencyType: currencyType,
+          ),
+        );
+      }
+
+      return periods;
+    } catch (e) {
+      log('Error fetching Santander credit card bill periods: $e');
+      rethrow;
+    }
+  }
+
+  String _getCurrencyFromIsoNumber(int isoNumber) {
+    // ISO 4217 currency codes
+    // 152 = CLP, 840 = USD
+    switch (isoNumber) {
+      case 152:
+        return 'CLP';
+      case 840:
+        return 'USD';
+      default:
+        return 'CLP'; // Default to CLP
+    }
+  }
+
+  @override
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('Santander credit card bill not implemented');
+  }
+
+  @override
+  Future<Uint8List> getCreditCardBillPdf(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    try {
+      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
+      final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
+      final accessToken = tokenModel.accessToken;
+
+      final properties = await _getProperties(await _webviewFactory());
+
+      final usuarioAlt = properties.usuarioAlt;
+      final canalId = properties.canal;
+      final canalFisico = properties.canalFisico;
+      final canalLogico = properties.canalLogico;
+      final numeroServidor = properties.nroSer;
+
+      // Parse productId
+      final productParts = productId.split('_');
+      if (productParts.length < 3) {
+        throw Exception('Invalid product ID format');
+      }
+      final rawEntityId = productParts[0];
+      final rawCenterId = productParts[1];
+      final rawContractId = productParts[2];
+
+      // Get period details to find startDate
+      final periods = await getCreditCardBillPeriods(credentials, productId);
+      final period = periods.firstWhere(
+        (p) => p.id == periodId,
+        orElse: () => throw Exception('Period not found'),
+      );
+
+      final requestBody = {
+        'Cabecera': {
+          'HOST': {
+            'USUARIO-ALT': usuarioAlt,
+            'TERMINAL-ALT': '',
+            'CANAL-ID': canalId,
+          },
+          'CanalFisico': canalFisico,
+          'CanalLogico': canalLogico,
+          'RutCliente': rut,
+          'RutUsuario': rut,
+          'IpCliente': '',
+          'InfoDispositivo': 'InfoDispositivo',
+          'InfoGeneral': {'NumeroServidor': numeroServidor},
+        },
+        'Entrada': {
+          'RutCliente': rut,
+          'CodEntidad': rawEntityId,
+          'CentroAlt': rawCenterId,
+          'Moneda': period.currency,
+          'Cuenta': rawContractId,
+          'Fecha': period.startDate.replaceAll('-', ''),
+        },
+      };
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        'https://apiper.santander.cl/permov/tarjetasDeCredito/estadoDeCuenta',
+        data: requestBody,
+        options: Options(
+          headers: {
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': 'es-419,es;q=0.6',
+            'access-token': accessToken,
+            'content-type': 'application/json',
+            'origin': 'https://mibanco.santander.cl',
+            'priority': 'u=1, i',
+            'referer': 'https://mibanco.santander.cl/',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'sec-gpc': '1',
+            'user-agent':
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+          },
+        ),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Empty response from bill PDF API');
+      }
+
+      final metadata = responseData['METADATA'] as Map<String, dynamic>?;
+      if (metadata != null && metadata['STATUS'] == '101') {
+        throw Exception('Credentials expired - needs reauth');
+      }
+
+      if (metadata?['STATUS'] != '0') {
+        throw Exception('Error fetching bill PDF');
+      }
+
+      final data = responseData['DATA'] as Map<String, dynamic>?;
+      final imgNbs64 = data?['imgNbs64'] as String?;
+
+      if (imgNbs64 == null) {
+        throw Exception('No PDF data in response');
+      }
+
+      // Decode base64 to bytes
+      final bytes = base64Decode(imgNbs64);
+      return Uint8List.fromList(bytes);
+    } catch (e) {
+      log('Error fetching Santander credit card bill PDF: $e');
       rethrow;
     }
   }

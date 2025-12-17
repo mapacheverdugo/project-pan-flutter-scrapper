@@ -147,6 +147,7 @@ class ClBancoChilePersonasProductMapper {
 
       productList.add(
         Product(
+          id: productId,
           number: productId,
           name: producto.descripcionLogo?.trim() ?? producto.label.trim(),
           type: productType,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -103,5 +104,39 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
   Future<List<Product>> getProducts(String credentials) {
     // TODO: implement getProducts
     throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError('BancoFalabella depositary account transactions not implemented');
+  }
+
+  @override
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError('BancoFalabella credit card bill periods not implemented');
+  }
+
+  @override
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('BancoFalabella credit card bill not implemented');
+  }
+
+  @override
+  Future<Uint8List> getCreditCardBillPdf(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('BancoFalabella credit card bill PDF not implemented');
   }
 }

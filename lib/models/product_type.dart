@@ -4,3 +4,4 @@ enum ProductType {
   depositaryAccountCreditLine,
   unknown,
 }
+

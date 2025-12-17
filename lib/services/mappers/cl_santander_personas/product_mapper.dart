@@ -132,7 +132,8 @@ class ClSantanderPersonasProductMapper {
 
             productList.add(
               Product(
-                number: productId,
+                id: productId,
+                number: products.first.numerocontrato,
                 name: titleCase(
                   glosaCorta?.toLowerCase() ?? card.glosaProducto,
                 ),
@@ -189,7 +190,8 @@ class ClSantanderPersonasProductMapper {
 
             productList.add(
               Product(
-                number: productId,
+                id: productId,
+                number: products.first.numerocontrato,
                 name: titleCase(glosaCorta?.toLowerCase() ?? ''),
                 type: productType,
                 availableAmount: creditBalances.isEmpty

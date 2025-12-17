@@ -75,7 +75,11 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: _products.length,
                   itemBuilder: (context, index) {
-                    return ProductCard(product: _products[index]);
+                    return ProductCard(
+                      product: _products[index],
+                      service: widget.service,
+                      credentials: widget.credentials,
+                    );
                   },
                 ),
             ],

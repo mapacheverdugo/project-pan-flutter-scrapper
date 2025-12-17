@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -241,6 +242,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     if (value == null) return null;
 
     return Product(
+      id: fallbackNumber,
       number: fallbackNumber,
       name: name,
       type: ProductType.depositaryAccount,
@@ -299,6 +301,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     );
 
     return Product(
+      id: fallbackNumber,
       number: number,
       name: name.isNotEmpty ? name : 'Línea de crédito',
       type: ProductType.depositaryAccountCreditLine,
@@ -405,6 +408,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     if (available == null) {
       // Igual devolvemos el producto si al menos identificamos la cuenta
       return Product(
+        id: number,
         number: number,
         name: meta.name,
         type: ProductType.depositaryAccount,
@@ -417,6 +421,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     }
 
     return Product(
+      id: number,
       number: number,
       name: meta.name,
       type: ProductType.depositaryAccount,
@@ -481,6 +486,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     }
 
     return Product(
+      id: number,
       number: number,
       name: 'Línea de crédito',
       type: ProductType.depositaryAccountCreditLine,
@@ -696,6 +702,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
       return [
         Product(
+          id: productNumber,
           number: productNumber,
           cardBrand: meta.cardBrand,
           cardLast4Digits: meta.cardLast4Digits,
@@ -749,6 +756,42 @@ class ClItauPersonasConnectionService extends ConnectionService {
       brand = CardBrand.diners;
 
     return _CardMeta(name: name, cardLast4Digits: last4, cardBrand: brand);
+  }
+
+  @override
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError(
+      'Itau depositary account transactions not implemented',
+    );
+  }
+
+  @override
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError('Itau credit card bill periods not implemented');
+  }
+
+  @override
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('Itau credit card bill not implemented');
+  }
+
+  @override
+  Future<Uint8List> getCreditCardBillPdf(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('Itau credit card bill PDF not implemented');
   }
 }
 

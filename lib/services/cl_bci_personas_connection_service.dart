@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -411,5 +412,194 @@ class ClBciPersonasConnectionService extends ConnectionService {
       'content-type': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  @override
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError('BCI depositary account transactions not implemented');
+  }
+
+  @override
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    try {
+      // Parse productId: format is "accountNumber_cardNumber"
+      final parts = productId.split('_');
+      if (parts.length < 2) {
+        throw Exception('Invalid product ID format');
+      }
+      final accountNumber = parts[0];
+      final cardNumber = parts[1];
+
+      // Get both national and international bill periods
+      final nationalPeriods = await _getCardBillPeriodsByStatementType(
+        credentials,
+        accountNumber,
+        cardNumber,
+        'nacional',
+      );
+      final internationalPeriods = await _getCardBillPeriodsByStatementType(
+        credentials,
+        accountNumber,
+        cardNumber,
+        'internacional',
+      );
+
+      final allPeriods = <CreditCardBillPeriod>[];
+
+      // Map national periods
+      for (final periodDate in nationalPeriods) {
+        // Convert DD/MM/YYYY to ISO date
+        final dateParts = periodDate.split('/');
+        if (dateParts.length == 3) {
+          final isoDate = '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
+          final periodId = '$productId|$isoDate|${CurrencyType.national.name}';
+          allPeriods.add(
+            CreditCardBillPeriod(
+              id: periodId,
+              startDate: isoDate,
+              endDate: null,
+              currency: 'CLP',
+              currencyType: CurrencyType.national,
+            ),
+          );
+        }
+      }
+
+      // Map international periods
+      for (final periodDate in internationalPeriods) {
+        final dateParts = periodDate.split('/');
+        if (dateParts.length == 3) {
+          final isoDate = '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
+          final periodId = '$productId|$isoDate|${CurrencyType.international.name}';
+          allPeriods.add(
+            CreditCardBillPeriod(
+              id: periodId,
+              startDate: isoDate,
+              endDate: null,
+              currency: 'USD',
+              currencyType: CurrencyType.international,
+            ),
+          );
+        }
+      }
+
+      return allPeriods;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+      log('Error fetching BCI card bill periods: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching BCI card bill periods: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<String>> _getCardBillPeriodsByStatementType(
+    String token,
+    String accountNumber,
+    String cardNumber,
+    String statementType,
+  ) async {
+    try {
+      final response = await _dio.post<List<dynamic>>(
+        '$_creditCardBaseUrl/operaciones-y-ejecucion/tarjetas/ms-estadocuentapersonasweb-exp/v1.3/estado-cuenta-tc/consultar-periodos',
+        data: {
+          'numeroCuenta': accountNumber,
+          'numeroTarjeta': cardNumber,
+          'tipoEstadoCuenta': statementType,
+        },
+        options: Options(headers: _getCreditCardHeaders(token)),
+      );
+
+      if (response.data == null) {
+        return [];
+      }
+
+      return response.data!.map((e) => e.toString()).toList();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+      log('Error fetching BCI card bill periods by type: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('BCI credit card bill not implemented');
+  }
+
+  @override
+  Future<Uint8List> getCreditCardBillPdf(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    try {
+      // Parse periodId: format is "productId|billingDate|currencyType"
+      final periodParts = periodId.split('|');
+      if (periodParts.length < 3) {
+        throw Exception('Invalid period ID format');
+      }
+      final rawBillingDate = periodParts[1];
+      final rawCurrencyType = periodParts[2];
+
+      // Parse productId
+      final productParts = productId.split('_');
+      if (productParts.length < 1) {
+        throw Exception('Invalid product ID format');
+      }
+      final rawAccountNumber = productParts[0];
+
+      final type = rawCurrencyType == CurrencyType.national.name
+          ? 'nacional'
+          : 'internacional';
+
+      // Convert ISO date (YYYY-MM-DD) to DD/MM/YYYY
+      final dateParts = rawBillingDate.split('-');
+      final formattedDate = '${dateParts[2]}/${dateParts[1]}/${dateParts[0]}';
+
+      final requestBody = {
+        'numeroCuenta': rawAccountNumber,
+        'tipoEstadoCuenta': type,
+        'periodo': formattedDate,
+      };
+
+      final response = await _dio.post<String>(
+        '$_creditCardBaseUrl/operaciones-y-ejecucion/tarjetas/ms-estadocuentapersonasweb-exp/v1.3/estado-cuenta-tc/pdf',
+        data: requestBody,
+        options: Options(
+          headers: _getCreditCardHeaders(credentials),
+          responseType: ResponseType.plain,
+        ),
+      );
+
+      // Decode base64 to bytes
+      final base64Data = response.data ?? '';
+      final bytes = base64Decode(base64Data);
+      return Uint8List.fromList(bytes);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+      log('Error fetching BCI credit card bill PDF: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching BCI credit card bill PDF: $e');
+      rethrow;
+    }
   }
 }

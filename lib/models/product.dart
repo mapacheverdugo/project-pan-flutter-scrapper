@@ -4,6 +4,7 @@ import 'package:pan_scrapper/models/credit_balance.dart';
 import 'package:pan_scrapper/models/product_type.dart';
 
 class Product {
+  final String id;
   final String number;
   final CardBrand? cardBrand;
   final String? cardLast4Digits;
@@ -14,6 +15,7 @@ class Product {
   final bool isForSecondaryCardHolder;
 
   Product({
+    required this.id,
     required this.number,
     required this.name,
     required this.type,
@@ -26,6 +28,7 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
+      id: json['id'] as String,
       number: json['number'] as String,
       cardBrand: json['cardBrand'] != null
           ? CardBrand.values.firstWhere(
@@ -55,6 +58,7 @@ class Product {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'number': number,
       'cardBrand': cardBrand?.name,
       'cardLast4Digits': cardLast4Digits,

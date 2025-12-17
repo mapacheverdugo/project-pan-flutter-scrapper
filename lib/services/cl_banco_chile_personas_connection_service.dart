@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -275,6 +276,208 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
           .toList();
     } catch (e) {
       log('Error fetching BancoChile card balances: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Transaction>> getDepositaryAccountTransactions(
+    String credentials,
+    String productId,
+  ) async {
+    throw UnimplementedError('BancoChile depositary account transactions not implemented');
+  }
+
+  @override
+  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+    String credentials,
+    String productId,
+  ) async {
+    try {
+      final rawProducts = await _getRawProducts(credentials);
+      final rawProductId = productId; // BancoChile productId is just the card ID
+
+      final card = rawProducts.productos.firstWhere(
+        (card) => card.id == rawProductId,
+        orElse: () => throw Exception('Card not found'),
+      );
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/tarjetas/estadocuenta/fechas-facturacion',
+        data: {
+          'idTarjeta': card.id,
+          'codigoProducto': card.codigo,
+          'tipoTarjeta': card.descripcionLogo,
+          'mascara': card.mascara,
+          'nombreTitular': card.tarjetaHabiente,
+        },
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+                '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'es-ES,es;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://portalpersonas.bancochile.cl/',
+            'Cookie': credentials,
+          },
+        ),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Empty response from bill periods API');
+      }
+
+      final listaNacional = responseData['listaNacional'] as List<dynamic>? ?? [];
+      final listaInternacional =
+          responseData['listaInternacional'] as List<dynamic>? ?? [];
+
+      final periods = <CreditCardBillPeriod>[];
+
+      // Map national periods
+      for (final period in listaNacional) {
+        final periodMap = period as Map<String, dynamic>;
+        final fechaFacturacion = periodMap['fechaFacturacion'] as String?;
+        if (fechaFacturacion == null) continue;
+
+        final periodId = '${CurrencyType.national.name}_$fechaFacturacion';
+
+        periods.add(
+          CreditCardBillPeriod(
+            id: periodId,
+            startDate: fechaFacturacion,
+            endDate: null,
+            currency: 'CLP',
+            currencyType: CurrencyType.national,
+          ),
+        );
+      }
+
+      // Map international periods
+      for (final period in listaInternacional) {
+        final periodMap = period as Map<String, dynamic>;
+        final fechaFacturacion = periodMap['fechaFacturacion'] as String?;
+        if (fechaFacturacion == null) continue;
+
+        final periodId = '${CurrencyType.international.name}_$fechaFacturacion';
+
+        periods.add(
+          CreditCardBillPeriod(
+            id: periodId,
+            startDate: fechaFacturacion,
+            endDate: null,
+            currency: 'USD',
+            currencyType: CurrencyType.international,
+          ),
+        );
+      }
+
+      return periods;
+    } catch (e) {
+      log('Error fetching BancoChile card bill periods: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    throw UnimplementedError('BancoChile credit card bill not implemented');
+  }
+
+  @override
+  Future<Uint8List> getCreditCardBillPdf(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    try {
+      // Parse periodId: format is "currencyType_rawPeriodId"
+      final periodParts = periodId.split('_');
+      if (periodParts.length < 2) {
+        throw Exception('Invalid period ID format');
+      }
+      final rawCurrencyType = periodParts[0];
+      final rawPeriodId = periodParts[1];
+
+      final rawProducts = await _getRawProducts(credentials);
+      final rawProductId = productId;
+      final card = rawProducts.productos.firstWhere(
+        (card) => card.id == rawProductId,
+        orElse: () => throw Exception('Card not found'),
+      );
+
+      // Get billing periods to get numeroCuenta
+      final billingPeriodsResponse = await _dio.post<Map<String, dynamic>>(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/tarjetas/estadocuenta/fechas-facturacion',
+        data: {
+          'idTarjeta': card.id,
+          'codigoProducto': card.codigo,
+          'tipoTarjeta': card.descripcionLogo,
+          'mascara': card.mascara,
+          'nombreTitular': card.tarjetaHabiente,
+        },
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+                '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'es-ES,es;q=0.9',
+            'Referer': 'https://portalpersonas.bancochile.cl/',
+            'Cookie': credentials,
+          },
+        ),
+      );
+
+      final numeroCuentaUrlDecoded = Uri.decodeComponent(
+        billingPeriodsResponse.data?['numeroCuenta'] as String? ?? '',
+      );
+
+      final currencyType = rawCurrencyType == CurrencyType.national.name
+          ? CurrencyType.national
+          : CurrencyType.international;
+
+      final requestBody = {
+        'idTarjeta': card.id,
+        'fechaFacturacion': rawPeriodId,
+        'esNacional': currencyType == CurrencyType.national,
+        'numeroCuenta': numeroCuentaUrlDecoded,
+        'esImprimir': false,
+      };
+
+      final response = await _dio.post(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/tarjetas/estadocuenta/pdf',
+        data: requestBody,
+        options: Options(
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'es-419,es;q=0.8',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+            'Origin': 'https://portalpersonas.bancochile.cl',
+            'Referer':
+                'https://portalpersonas.bancochile.cl/mibancochile-web/front/persona/index.html',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-GPC': '1',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36',
+            'Cookie': credentials,
+          },
+          responseType: ResponseType.bytes,
+        ),
+      );
+
+      return Uint8List.fromList(response.data as List<int>);
+    } catch (e) {
+      log('Error fetching BancoChile credit card bill PDF: $e');
       rethrow;
     }
   }
