@@ -75,33 +75,36 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ),
                 ),
                 if (_transactions.isNotEmpty)
-                  ..._transactions.take(5).map((transaction) {
-                    return Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              transaction.description,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Amount: ${transaction.amount.amount} ${transaction.amount.currency}',
-                            ),
-                            if (transaction.transactionDate != null)
-                              Text('Date: ${transaction.transactionDate}'),
-                            Text('Type: ${transaction.type.name}'),
-                            if (transaction.creditDebit != null)
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _transactions.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                'Credit/Debit: ${transaction.creditDebit!.name}',
+                                _transactions[index].description,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                          ],
+                              SizedBox(height: 4),
+                              Text(
+                                'Amount: ${_transactions[index].amount.amount} ${_transactions[index].amount.currency}',
+                              ),
+                              if (_transactions[index].transactionDate != null)
+                                Text(
+                                  'Date: ${_transactions[index].transactionDate}',
+                                ),
+                              Text('Type: ${_transactions[index].type.name}'),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
                 if (_transactions.isEmpty && !_isLoadingTransactions)
                   Padding(
                     padding: EdgeInsets.all(10),
@@ -200,7 +203,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       final transactions = await widget.service
           .getDepositaryAccountTransactions(
             widget.credentials.resultCredentials,
-            widget.product.number,
+            widget.product.id,
           );
       setState(() {
         _isLoadingTransactions = false;

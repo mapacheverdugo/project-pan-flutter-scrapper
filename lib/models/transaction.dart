@@ -1,7 +1,6 @@
 import 'package:pan_scrapper/models/billing_status.dart';
 import 'package:pan_scrapper/models/currency_type.dart';
 import 'package:pan_scrapper/models/transaction_amount.dart';
-import 'package:pan_scrapper/models/transaction_credit_debit.dart';
 import 'package:pan_scrapper/models/transaction_type.dart';
 
 class TransactionInstallments {
@@ -44,7 +43,6 @@ class TransactionInstallments {
 class Transaction {
   final String id;
   final TransactionType type;
-  final TransactionCreditDebit? creditDebit;
   final String description;
   final TransactionAmountRequired amount;
   final CurrencyType? billingCurrencyType;
@@ -62,7 +60,6 @@ class Transaction {
     required this.type,
     required this.description,
     required this.amount,
-    this.creditDebit,
     this.billingCurrencyType,
     this.billingStatus,
     this.transactionDate,
@@ -78,7 +75,6 @@ class Transaction {
     return {
       'id': id,
       'type': type.name,
-      if (creditDebit != null) 'creditDebit': creditDebit!.name,
       'description': description,
       'amount': amount.toJson(),
       if (billingCurrencyType != null)

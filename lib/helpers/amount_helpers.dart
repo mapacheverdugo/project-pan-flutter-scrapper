@@ -38,7 +38,7 @@ class Amount {
   }
 
   static String _removeEverythingButNumberSymbols(String text) {
-    return text.replaceAll(RegExp(r'[^0-9.+-,]'), '');
+    return text.replaceAll(RegExp(r'[^0-9.+\-,]'), '');
   }
 
   num? get value => _value;

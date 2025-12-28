@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
+import 'package:pan_scrapper/services/mappers/cl_santander_personas/depositary_account_transaction_mapper.dart';
 import 'package:pan_scrapper/services/mappers/cl_santander_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 import 'package:pan_scrapper/webview/webview.dart';
@@ -317,9 +319,214 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError(
-      'Santander depositary account transactions not implemented',
-    );
+    try {
+      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
+      final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
+      final accessToken = tokenModel.accessToken;
+      final jwt = tokenModel.tokenJwt;
+
+      // Subscribe key first
+      await _suscriberKey(rut, accessToken);
+
+      // Parse product ID
+      final productIdMetadata = ClSantanderPersonasProductMapper.parseProductId(
+        productId,
+      );
+
+      final transactions = <Transaction>[];
+
+      // Get raw products to find currency
+      final rawProducts = await _getRawProducts(
+        properties: await _getProperties(await _webviewFactory()),
+        rut: rut,
+        jwt: jwt,
+      );
+
+      final currentProduct = rawProducts
+          .data
+          ?.output
+          ?.matrices
+          ?.matrizcaptaciones
+          ?.e1
+          .firstWhereOrNull(
+            (product) =>
+                product.numerocontrato == productIdMetadata.rawContractId,
+          );
+
+      if (currentProduct == null) {
+        throw Exception('Product not found');
+      }
+
+      final productCurrency = currentProduct.codigomoneda ?? 'CLP';
+
+      // Paginated requests
+      var shouldContinue = true;
+      String? lastMovementNumber;
+
+      do {
+        final response = await _getRawDepositaryAccountRecentTransactionsPage(
+          productIdMetadata: productIdMetadata,
+          productCurrency: productCurrency,
+          accessToken: accessToken,
+          endMovement: lastMovementNumber,
+        );
+
+        final newTransactions =
+            ClSantanderPersonasDepositaryAccountTransactionMapper.fromResponseModel(
+              response,
+              productCurrency,
+            );
+
+        transactions.addAll(newTransactions);
+
+        final finalMove = response.repositioningExit?.finalMove;
+
+        if (finalMove == null) {
+          shouldContinue = false;
+        } else {
+          lastMovementNumber = finalMove;
+        }
+      } while (shouldContinue);
+
+      return transactions;
+    } catch (e) {
+      log('Error fetching depositary account transactions: $e');
+      rethrow;
+    }
+  }
+
+  /// Subscribes the key for the given RUT and access token
+  Future<void> _suscriberKey(String rut, String accessToken) async {
+    try {
+      final response = await _dio.post(
+        'https://apideveloper.santander.cl/sancl/privado/market_research/v1/suscriberkeymc',
+        data: {
+          'rut': rut.substring(0, rut.length - 1),
+          'digitoVerificador': rut.substring(rut.length - 1),
+        },
+        options: Options(
+          headers: {
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': 'es-419,es;q=0.9',
+            'origin': 'https://mibanco.santander.cl',
+            'priority': 'u=1, i',
+            'referer': 'https://mibanco.santander.cl/',
+            'sec-ch-ua':
+                '"Chromium";v="134", "Not:A-Brand";v="24", "Brave";v="134"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'sec-gpc': '1',
+            'user-agent':
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+            'content-type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+
+      if (responseData is Map<String, dynamic>) {
+        final metadata = responseData['METADATA'] as Map<String, dynamic>?;
+        if (metadata != null && metadata['STATUS'] == '401') {
+          throw Exception('Credentials expired - needs reauth');
+        }
+      }
+    } catch (e) {
+      log('Error in suscriberKey: $e');
+      // Check if it's a 401 error
+      if (e is DioException && e.response?.statusCode == 401) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetches a page of depositary account transactions
+  Future<ClSantanderPersonasDepositaryAccountTransactionResponseModel>
+  _getRawDepositaryAccountRecentTransactionsPage({
+    required ClSantanderPersonasProductIdMetadata productIdMetadata,
+    required String productCurrency,
+    required String accessToken,
+    String? endMovement,
+  }) async {
+    try {
+      final properties = await _getProperties(await _webviewFactory());
+      final santanderClientId = properties.xSantanderClientId;
+      final usuarioAlt = properties.usuarioAlt;
+
+      // Construct account ID from center ID and contract ID
+      final accountId =
+          '${productIdMetadata.rawCenterId}${productIdMetadata.rawContractId}';
+
+      final startDate = '2000-01-01';
+      // Get current date and add 30 days
+      final endDate = DateTime.now().add(const Duration(days: 30));
+
+      final body = <String, dynamic>{
+        'accountId': accountId,
+        'currency': productCurrency,
+        'commercialGroup': '',
+        'openingDate': startDate,
+        'closingDate': endDate.toIso8601String().split('T')[0],
+      };
+
+      if (endMovement != null) {
+        body['startMovement'] = '000000000';
+        body['endMovement'] = endMovement;
+      }
+
+      final response = await _dio.post(
+        'https://openbanking.santander.cl/account_balances_transactions_and_withholdings_retail/v1/current-accounts/transactions',
+        data: body,
+        options: Options(
+          headers: {
+            'host': 'openbanking.santander.cl',
+            'origin': 'https://mibanco.santander.cl',
+            'referer': 'https://mibanco.santander.cl/',
+            'sec-ch-ua':
+                '"Chromium";v="134", "Not:A-Brand";v="24", "Brave";v="134"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'sec-gpc': '1',
+            'user-agent':
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+            'x-b3-spanid': 'AL43243287438243P',
+            'x-client-code': 'STD-PER-FPP',
+            'x-organization-code': 'Santander',
+            'x-santander-client-id': santanderClientId,
+            'x-schema-id': usuarioAlt,
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Empty response from transactions API');
+      }
+
+      return ClSantanderPersonasDepositaryAccountTransactionResponseModel.fromJson(
+        responseData as Map<String, dynamic>,
+      );
+    } catch (e) {
+      log('Error fetching depositary account transactions page: $e');
+      if (e is DioException && e.response?.statusCode == 401) {
+        throw Exception('Credentials expired - needs reauth');
+      }
+      rethrow;
+    }
   }
 
   @override
