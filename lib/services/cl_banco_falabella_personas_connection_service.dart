@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 
@@ -39,32 +40,41 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
       await webview.waitForSelector(
         openFormButtonSelector,
         timeout: Duration(seconds: 30),
+        visible: true,
+        stable: true,
       );
 
-      await webview.tap(openFormButtonSelector);
+      await webview.evaluate(buildFocusJS(openFormButtonSelector));
+
+      final res = await webview.evaluate(
+        "document.querySelector('$openFormButtonSelector').click();",
+      );
 
       await webview.waitForSelector(
         rutSelector,
         timeout: Duration(seconds: 30),
         visible: true,
+        stable: true,
       );
 
       log("BancoFalabellaService auth form inputs found");
 
-      await webview.tap(rutSelector);
+      await webview.evaluate(buildFocusJS(rutSelector));
       await webview.type(
         rutSelector,
         username.toLowerCase(),
-        minVariation: Duration(milliseconds: 1050),
-        maxVariation: Duration(milliseconds: 3050),
+        delay: Duration(milliseconds: 100),
+        minVariation: Duration(milliseconds: 30),
+        maxVariation: Duration(milliseconds: 90),
       );
 
-      await webview.tap(passwordSelector);
+      await webview.evaluate(buildFocusJS(passwordSelector));
       await webview.type(
         passwordSelector,
         password,
-        minVariation: Duration(milliseconds: 1050),
-        maxVariation: Duration(milliseconds: 3050),
+        delay: Duration(milliseconds: 100),
+        minVariation: Duration(milliseconds: 30),
+        maxVariation: Duration(milliseconds: 90),
       );
 
       await webview.waitForSelector(
@@ -111,7 +121,33 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError('BancoFalabella depositary account transactions not implemented');
+    throw UnimplementedError(
+      'BancoFalabella depositary account transactions not implemented',
+    );
+  }
+
+  String buildFocusJS(String selector) {
+    final sel = jsonEncode(selector);
+    final js =
+        """
+    var el = document.querySelector($sel);
+
+    var prev = document.activeElement;
+
+  // 1. Simular salida del anterior
+  if (prev) {
+    prev.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: el }));
+    prev.dispatchEvent(new FocusEvent('DOMFocusOut', { bubbles: true, relatedTarget: el }));
+  }
+
+  // 2. Simular entrada al nuevo
+  el.focus(); // El navegador lanzará 'focus' automáticamente
+  
+  // Forzar los eventos que burbujean (los que pintan el color)
+  el.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: prev }));
+  el.dispatchEvent(new FocusEvent('DOMFocusIn', { bubbles: true, relatedTarget: prev }));
+  """;
+    return js;
   }
 
   @override
@@ -119,7 +155,9 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError('BancoFalabella credit card bill periods not implemented');
+    throw UnimplementedError(
+      'BancoFalabella credit card bill periods not implemented',
+    );
   }
 
   @override
@@ -137,6 +175,8 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
     String productId,
     String periodId,
   ) async {
-    throw UnimplementedError('BancoFalabella credit card bill PDF not implemented');
+    throw UnimplementedError(
+      'BancoFalabella credit card bill PDF not implemented',
+    );
   }
 }

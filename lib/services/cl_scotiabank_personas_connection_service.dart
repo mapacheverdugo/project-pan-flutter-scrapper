@@ -54,16 +54,17 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
 
       log("ScotiabankService auth after navigate");
 
-      final rutSelector = "input[name='Validate_rut']";
-      final passwordSelector = "input[name='pin']";
+      final rutSelector = "#login-retail-content-card-form-input-dni-input";
+      final passwordSelector =
+          "#login-retail-content-card-form-input-password-input";
 
-      await webview.waitForSelector("input[name='Validate_rut']");
+      await webview.waitForSelector(rutSelector);
 
       log("ScotiabankService auth selector $rutSelector founded");
 
       await webview.type(rutSelector, username);
       await webview.type(passwordSelector, password);
-      await webview.tap("button[type='default']");
+      await webview.tap("#login-retail-content-card-form > button");
 
       log("ScotiabankService auth waiting for completer...");
 

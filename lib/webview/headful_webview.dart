@@ -366,10 +366,13 @@ class HeadfulWebview implements WebviewInstance {
       scrollIntoView: scrollIntoView,
     );
 
-    final js = buildTapEventsJS(selector);
+    final js = buildTapEventsJS();
 
-    final res = await c.evaluateJavascript(source: js);
-    if (res != true) {
+    var res = await c.callAsyncJavaScript(
+      functionBody: js,
+      arguments: {'selector': selector},
+    );
+    if (res?.value != true) {
       throw Exception('Failed to click $selector');
     }
   }
@@ -408,8 +411,17 @@ class HeadfulWebview implements WebviewInstance {
       variationMax: maxVariation.inMilliseconds,
     );
 
-    final res = await c.evaluateJavascript(source: js);
-    if (res != true) {
+    var res = await c.callAsyncJavaScript(
+      functionBody: js,
+      arguments: {
+        'selector': selector,
+        'text': text,
+        'baseDelay': delay.isNegative ? 0 : delay.inMilliseconds,
+        'varMin': minVariation.isNegative ? 0 : minVariation.inMilliseconds,
+        'varMax': maxVariation.isNegative ? 0 : maxVariation.inMilliseconds,
+      },
+    );
+    if (res?.value != true) {
       throw Exception('type() failed for selector "$selector"');
     }
   }

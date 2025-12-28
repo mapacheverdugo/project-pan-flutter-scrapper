@@ -1,4 +1,4 @@
-package com.example.example
+package cl.mapacheverdugo.panexample
 
 import io.flutter.embedding.android.FlutterActivity
 

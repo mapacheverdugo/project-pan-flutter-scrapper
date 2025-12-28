@@ -339,10 +339,13 @@ class HeadlessWebview implements WebviewInstance {
       scrollIntoView: scrollIntoView,
     );
 
-    final js = buildTapEventsJS(selector);
+    final js = buildTapEventsJS();
 
-    final res = await c.evaluateJavascript(source: js);
-    if (res != true) {
+    var res = await c.callAsyncJavaScript(
+      functionBody: js,
+      arguments: {'selector': selector},
+    );
+    if (res?.value != true) {
       throw Exception('Failed to click $selector');
     }
   }

@@ -5,11 +5,7 @@ import 'dart:developer';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-enum StopLoadWaitType {
-  navigation,
-  exactUri,
-  startsWithUri,
-}
+enum StopLoadWaitType { navigation, exactUri, startsWithUri }
 
 abstract class StopLoadWait {
   static const defaultTimeout = Duration(seconds: 60);
@@ -32,12 +28,12 @@ class StopLoadWaitNavigation extends StopLoadWait {
 
 class StopLoadWaitExactUri extends StopLoadWait {
   StopLoadWaitExactUri(Uri uri)
-      : super(type: StopLoadWaitType.exactUri, uri: uri);
+    : super(type: StopLoadWaitType.exactUri, uri: uri);
 }
 
 class StopLoadWaitStartsWithUri extends StopLoadWait {
   StopLoadWaitStartsWithUri(Uri uri)
-      : super(type: StopLoadWaitType.startsWithUri, uri: uri);
+    : super(type: StopLoadWaitType.startsWithUri, uri: uri);
 }
 
 /// Builds JavaScript code to check if an element is ready based on visibility and stability
@@ -130,40 +126,126 @@ String buildClickWithMouseEventsJS(String selector) {
 ''';
 }
 
-String buildTapEventsJS(String selector) {
-  final sel = jsonEncode(selector);
+String buildTapEventsJS() {
   return '''
-    (() => {
-      const el = document.querySelector($sel);
-      if (!el) throw 'Element not found';
+const el = document.querySelector(selector);
+  if (!el) return false;
 
-      const rect = el.getBoundingClientRect();
-      const clientX = rect.left + Math.max(1, rect.width / 2);
-      const clientY = rect.top + Math.max(1, rect.height / 2);
+  const rect = el.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
 
-      const touchObj = new Touch({
-        identifier: Date.now(),
-        target: el,
-        clientX, clientY,
-        pageX: clientX, pageY: clientY,
-        radiusX: 1, radiusY: 1, rotationAngle: 0, force: 1,
-      });
+  // Obtenemos el elemento REAL en esa posición (puede ser un span dentro del botón)
+  const actualTarget = document.elementFromPoint(x, y) || el;
 
-      const touchList = [touchObj];
-      const init = { bubbles: true, cancelable: true, touches: touchList, targetTouches: touchList, changedTouches: touchList };
+  const pointerId = 1;
+  const common = {
+    clientX: x,
+    clientY: y,
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    pointerId: pointerId,
+    pointerType: 'touch',
+    isPrimary: true
+  };
 
-      el.dispatchEvent(new TouchEvent('touchstart', init));
-      el.dispatchEvent(new TouchEvent('touchend', init));
-      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX, clientY }));
-      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX, clientY }));
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX, clientY }));
+  // 1. Secuencia de aproximación (Hover en móviles a veces dispara estados)
+  actualTarget.dispatchEvent(new PointerEvent('pointerover', common));
+  actualTarget.dispatchEvent(new PointerEvent('pointerenter', common));
+  
+  // 2. Toque inicial
+  actualTarget.dispatchEvent(new PointerEvent('pointerdown', common));
+  actualTarget.dispatchEvent(new TouchEvent('touchstart', {
+    touches: [new Touch({ identifier: pointerId, target: actualTarget, clientX: x, clientY: y })],
+    bubbles: true
+  }));
 
-      return true;
-    })()
+  // 3. Simular la presión (Dwell time)
+  await new Promise(r => setTimeout(r, 100 + Math.random() * 50));
+
+  // 4. Liberación
+  actualTarget.dispatchEvent(new PointerEvent('pointerup', common));
+  actualTarget.dispatchEvent(new TouchEvent('touchend', {
+    changedTouches: [new Touch({ identifier: pointerId, target: actualTarget, clientX: x, clientY: y })],
+    bubbles: true
+  }));
+
+  // 5. El click final que activa el submit
+  actualTarget.dispatchEvent(new MouseEvent('click', { ...common, detail: 1 }));
+
+  return true;
+
     ''';
 }
 
 String buildTypeEventsJS({
+  required String selector,
+  required String text,
+  int delay = 0,
+  int variationMin = 0,
+  int variationMax = 0,
+}) {
+  final sel = jsonEncode(selector);
+  final txt = jsonEncode(text);
+  final dly = delay;
+  final vmin = variationMin;
+  final vmax = variationMax;
+
+  return '''
+
+
+  const el = document.querySelector($sel);
+  if (!el) return false;
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  const randExtra = (min, max) => {
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) return 0;
+    return Math.floor(min + Math.random() * (max - min + 1));
+  };
+
+  // 1. Obtener el setter nativo (Vital para React/Vue/Angular)
+  const prototype = el instanceof HTMLTextAreaElement 
+    ? window.HTMLTextAreaElement.prototype 
+    : window.HTMLInputElement.prototype;
+  const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value").set;
+
+  el.focus();
+
+  // 2. Escribir carácter por carácter
+  for (const char of Array.from(text)) {
+    const kbInit = { key: char, bubbles: true, cancelable: true };
+
+    // Eventos de teclado iniciales
+    el.dispatchEvent(new KeyboardEvent('keydown', kbInit));
+
+    // Actualizar el valor usando el setter nativo
+    const currentValue = el.value;
+    nativeSetter.call(el, currentValue + char);
+
+    // Disparar evento de input (Para que el Framework actualice su estado)
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Eventos de teclado finales
+    el.dispatchEvent(new KeyboardEvent('keyup', kbInit));
+
+    // 3. Delay Humano (Asíncrono)
+    const waitMs = Math.max(0, baseDelay + randExtra(varMin, varMax));
+    if (waitMs > 0) {
+      await sleep(waitMs); 
+    }
+  }
+
+  // 4. Evento de cambio final
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.blur();
+
+  return true;
+''';
+}
+
+String buildTypeEventsJSOld({
   required String selector,
   required String text,
   int delay = 0,
@@ -268,21 +350,7 @@ String buildTypeEventsJS({
       // Elemento no editable: solo eventos
     }
 
-    // input event si cambió el contenido
-    if (didChange) {
-      try {
-        el.dispatchEvent(new InputEvent('input', {
-          data: isEnter && isTextInput(el) && el.tagName !== 'TEXTAREA' ? null : ch,
-          inputType: 'insertText',
-          bubbles: true,
-          cancelable: true
-        }));
-      } catch (_) {
-        const ev = document.createEvent('Event');
-        ev.initEvent('input', true, true);
-        el.dispatchEvent(ev);
-      }
-    }
+
 
     // keyup
     el.dispatchEvent(new KeyboardEvent('keyup', kbInit));
@@ -312,7 +380,8 @@ Future<AjaxRequest?> shouldInterceptAjaxRequest(
   Map<RegExp, Future<AjaxRequest> Function(AjaxRequest)> requestInterceptors =
       const {},
   Map<RegExp, Future<AjaxRequestAction> Function(AjaxRequest)>
-      responseInterceptors = const {},
+      responseInterceptors =
+      const {},
 }) async {
   final uriString = originalRequest.url?.uriValue.toString();
   log('WebViewHelpers shouldInterceptAjaxRequest uriString $uriString');
@@ -335,8 +404,9 @@ Future<AjaxRequest?> shouldInterceptAjaxRequest(
 
   if (hasRequestInterceptorMatch) return previousRequest;
 
-  final responseInterceptorsMatches =
-      responseInterceptors.keys.map((key) => key.hasMatch(uriString));
+  final responseInterceptorsMatches = responseInterceptors.keys.map(
+    (key) => key.hasMatch(uriString),
+  );
 
   if (responseInterceptorsMatches.contains(true)) {
     return previousRequest;
@@ -350,7 +420,8 @@ Future<AjaxRequestAction?> onAjaxReadyStateChange(
   Map<RegExp, Future<AjaxRequest> Function(AjaxRequest)> requestInterceptors =
       const {},
   Map<RegExp, Future<AjaxRequestAction> Function(AjaxRequest)>
-      responseInterceptors = const {},
+      responseInterceptors =
+      const {},
 }) async {
   final uriString = request.url?.uriValue.toString();
   log('WebViewHelpers onAjaxReadyStateChange uriString $uriString');
@@ -391,7 +462,8 @@ void onLoadResource(
 Future<NavigationActionPolicy?> shouldOverrideUrlLoading(
   NavigationAction navigationAction, {
   Map<RegExp, Future<NavigationActionPolicy?> Function(NavigationAction)>
-      shouldOverrideUrlLoadingListeners = const {},
+      shouldOverrideUrlLoadingListeners =
+      const {},
 }) async {
   final uriString = navigationAction.request.url?.uriValue.toString();
   log('WebViewHelpers shouldOverrideUrlLoading uriString $uriString');

@@ -93,7 +93,7 @@ class ClBciPersonasConnectionService extends ConnectionService {
         ),
       );
 
-      /* log("BciService auth after navigate");
+      log("BciService auth after navigate");
 
       final rutSelector = '#rut_aux';
       final passwordSelector = '#clave';
@@ -127,7 +127,7 @@ class ClBciPersonasConnectionService extends ConnectionService {
         timeout: Duration(seconds: 5),
       );
 
-      log("BciService auth waiting for token..."); */
+      log("BciService auth waiting for token...");
 
       // Wait for token with timeout
       final token = await completer.future.timeout(
@@ -419,7 +419,9 @@ class ClBciPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError('BCI depositary account transactions not implemented');
+    throw UnimplementedError(
+      'BCI depositary account transactions not implemented',
+    );
   }
 
   @override
@@ -457,7 +459,8 @@ class ClBciPersonasConnectionService extends ConnectionService {
         // Convert DD/MM/YYYY to ISO date
         final dateParts = periodDate.split('/');
         if (dateParts.length == 3) {
-          final isoDate = '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
+          final isoDate =
+              '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
           final periodId = '$productId|$isoDate|${CurrencyType.national.name}';
           allPeriods.add(
             CreditCardBillPeriod(
@@ -475,8 +478,10 @@ class ClBciPersonasConnectionService extends ConnectionService {
       for (final periodDate in internationalPeriods) {
         final dateParts = periodDate.split('/');
         if (dateParts.length == 3) {
-          final isoDate = '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
-          final periodId = '$productId|$isoDate|${CurrencyType.international.name}';
+          final isoDate =
+              '${dateParts[2]}-${dateParts[1].padLeft(2, '0')}-${dateParts[0].padLeft(2, '0')}';
+          final periodId =
+              '$productId|$isoDate|${CurrencyType.international.name}';
           allPeriods.add(
             CreditCardBillPeriod(
               id: periodId,

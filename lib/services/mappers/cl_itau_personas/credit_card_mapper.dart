@@ -1,0 +1,177 @@
+import 'dart:developer';
+
+import 'package:html/dom.dart';
+import 'package:html/parser.dart';
+import 'package:pan_scrapper/helpers/amount_helpers.dart';
+import 'package:pan_scrapper/models/index.dart';
+
+class ClItauPersonasCreditCardMapper {
+  static List<Product> parseCreditCard(String html) {
+    try {
+      final doc = parse(html);
+
+      final selectedOption = doc.querySelector('select option[selected]');
+
+      final _CardMeta meta = _parseCardMetaFromOption(
+        selectedOption?.text ?? '',
+      );
+
+      final String productNumber =
+          (selectedOption?.attributes['value']?.trim().isNotEmpty == true)
+          ? selectedOption!.attributes['value']!.trim()
+          : (meta.cardLast4Digits ?? meta.name);
+
+      final availableClp = _readAmount(
+        doc,
+        selector: '#CupoDisponiblePesos',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 0,
+        ),
+      );
+
+      final usedClp = _readAmount(
+        doc,
+        selector: '#DeudaNacional',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 0,
+        ),
+      );
+
+      final totalClp = _readAmount(
+        doc,
+        selector: '#CupoTotalNacional',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 0,
+        ),
+      );
+
+      final availableUsd = _readAmount(
+        doc,
+        selector: '#CupoDisponibleDolar',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 2,
+        ),
+      );
+
+      final usedUsd = _readAmount(
+        doc,
+        selector: '#DeudaInternacional',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 2,
+        ),
+      );
+
+      final totalUsd = _readAmount(
+        doc,
+        selector: '#CupoTotalInternacional',
+        options: AmountOptions(
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+          currencyDecimals: 2,
+        ),
+      );
+
+      final creditBalances = <CreditBalance>[];
+
+      if (availableClp != null && totalClp != null && usedClp != null) {
+        creditBalances.add(
+          CreditBalance(
+            currency: 'CLP',
+            creditLimitAmount: totalClp.toInt(),
+            availableAmount: availableClp.toInt(),
+            usedAmount: usedClp.toInt(),
+          ),
+        );
+      }
+
+      if (availableUsd != null && totalUsd != null && usedUsd != null) {
+        creditBalances.add(
+          CreditBalance(
+            currency: 'USD',
+            creditLimitAmount: totalUsd.toInt(),
+            availableAmount: availableUsd.toInt(),
+            usedAmount: usedUsd.toInt(),
+          ),
+        );
+      }
+
+      return [
+        Product(
+          id: productNumber,
+          number: productNumber,
+          cardBrand: meta.cardBrand,
+          cardLast4Digits: meta.cardLast4Digits,
+          name: meta.name,
+          type: ProductType.creditCard,
+          creditBalances: creditBalances,
+          isForSecondaryCardHolder: false,
+        ),
+      ];
+    } catch (e) {
+      log('Itau get products error: $e');
+      rethrow;
+    }
+  }
+
+  static _CardMeta _parseCardMetaFromOption(String optionText) {
+    final parts = optionText.split('##').map((e) => e.trim()).toList();
+
+    final String name = (parts.isNotEmpty && parts[0].isNotEmpty)
+        ? parts[0]
+        : 'Credit Card';
+
+    String? last4;
+    if (parts.length >= 2) {
+      final match = RegExp(r'(\d{4})\s*$').firstMatch(parts[1]);
+      last4 = match?.group(1);
+    }
+
+    CardBrand? brand;
+    final String combined = parts.join(' ').toLowerCase();
+    if (combined.contains('mastercard'))
+      brand = CardBrand.mastercard;
+    else if (combined.contains('visa'))
+      brand = CardBrand.visa;
+    else if (combined.contains('amex'))
+      brand = CardBrand.amex;
+    else if (combined.contains('diners'))
+      brand = CardBrand.diners;
+
+    return _CardMeta(name: name, cardLast4Digits: last4, cardBrand: brand);
+  }
+
+  static num? _readAmount(
+    Document doc, {
+    required String selector,
+    required AmountOptions options,
+  }) {
+    final Element? el = doc.querySelector(selector);
+    final String raw = (el?.text ?? '').trim();
+    if (raw.isEmpty) return null;
+
+    final amount = Amount.parse(raw, options);
+    return amount.value;
+  }
+}
+
+class _CardMeta {
+  final String name;
+  final String? cardLast4Digits;
+  final CardBrand? cardBrand;
+
+  _CardMeta({
+    required this.name,
+    required this.cardLast4Digits,
+    required this.cardBrand,
+  });
+}
