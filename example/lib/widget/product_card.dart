@@ -1,8 +1,10 @@
 import 'package:example/models/access_credentials.dart';
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
+import 'package:example/screens/credit_card_details_screen.dart';
 import 'package:example/screens/product_details_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
@@ -23,14 +25,21 @@ class ProductCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: () {
+          final isCreditCard = product.type == ProductType.creditCard;
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProductDetailsScreen(
-                service: service,
-                credentials: credentials,
-                product: product,
-              ),
+              builder: (context) => isCreditCard
+                  ? CreditCardDetailsScreen(
+                      service: service,
+                      credentials: credentials,
+                      product: product,
+                    )
+                  : ProductDetailsScreen(
+                      service: service,
+                      credentials: credentials,
+                      product: product,
+                    ),
             ),
           );
         },

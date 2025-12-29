@@ -75,4 +75,12 @@ class PanScrapperService {
   ) async {
     return _client.getCreditCardBillPeriods(credentials, productId);
   }
+
+  Future<CreditCardBill> getCreditCardBill(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    return _client.getCreditCardBill(credentials, productId, periodId);
+  }
 }
