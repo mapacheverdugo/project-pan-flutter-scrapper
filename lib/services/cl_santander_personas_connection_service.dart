@@ -11,6 +11,7 @@ import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/services/mappers/cl_santander_personas/depositary_account_transaction_mapper.dart';
 import 'package:pan_scrapper/services/mappers/cl_santander_personas/product_mapper.dart';
+import 'package:pan_scrapper/services/mappers/cl_santander_personas/tarjetas_de_credito_consulta_ultimos_movimientos_mapper.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 import 'package:pan_scrapper/webview/webview.dart';
 
@@ -664,6 +665,106 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         return 'USD';
       default:
         return 'CLP'; // Default to CLP
+    }
+  }
+
+  /// Gets credit card unbilled transactions for the given product and currency type
+  @override
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) async {
+    try {
+      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
+      final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
+      final accessToken = tokenModel.accessToken;
+
+      final properties = await _getProperties(await _webviewFactory());
+      final usuarioAlt = properties.usuarioAlt;
+      final canalId = properties.canal;
+      final canalFisico = properties.canalFisico;
+      final canalLogico = properties.canalLogico;
+      final infoDispositivo = properties.infoDispositivo;
+      final santanderClientId = properties.xSantanderClientId;
+
+      // Parse product ID
+      final productIdMetadata = ClSantanderPersonasProductMapper.parseProductId(
+        productId,
+      );
+
+      // Determine currency code
+      final moneda = transactionType == CurrencyType.national ? 'CLP' : 'USD';
+
+      final requestBody = {
+        'Cabecera': {
+          'HOST': {
+            'USUARIO-ALT': usuarioAlt,
+            'TERMINAL-ALT': '',
+            'CANAL-ID': canalId,
+          },
+          'CanalFisico': canalFisico,
+          'CanalLogico': canalLogico,
+          'RutCliente': rut,
+          'RutUsuario': rut,
+          'IpCliente': '',
+          'InfoDispositivo': infoDispositivo,
+        },
+        'Entrada': {
+          'Entidad': productIdMetadata.rawEntityId ?? '',
+          'Centro': productIdMetadata.rawCenterId,
+          'Cuenta': productIdMetadata.rawContractId,
+          'Moneda': moneda,
+        },
+      };
+
+      final headers = {
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'es-419,es;q=0.9',
+        'authorization': 'Bearer $accessToken',
+        'content-type': 'application/json',
+        'origin': 'https://movil.santander.cl',
+        'priority': 'u=1, i',
+        'referer': 'https://movil.santander.cl/',
+        'sec-ch-ua':
+            '"Brave";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'sec-gpc': '1',
+        'user-agent':
+            'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36',
+        'x-santander-client-id': santanderClientId,
+      };
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        'https://api-dsk.santander.cl/permov/tarjetasDeCredito/consultaUltimosMovimientos',
+        data: requestBody,
+        options: Options(headers: headers),
+      );
+
+      final responseData = response.data;
+      if (responseData == null) {
+        throw Exception('Empty response from unbilled transactions API');
+      }
+
+      final metadata = responseData['METADATA'] as Map<String, dynamic>?;
+      if (metadata != null && metadata['STATUS'] == '101') {
+        throw Exception('Credentials expired - needs reauth');
+      }
+
+      final model =
+          ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosResponseModel
+              .fromJson(responseData);
+
+      return ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper
+          .fromResponseModel(model, transactionType);
+    } catch (e) {
+      log('Error fetching credit card unbilled transactions: $e');
+      rethrow;
     }
   }
 

@@ -179,4 +179,14 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
       'BancoFalabella credit card bill PDF not implemented',
     );
   }
+
+  @override
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) {
+    // TODO: implement getCreditCardUnbilledTransactions
+    throw UnimplementedError();
+  }
 }

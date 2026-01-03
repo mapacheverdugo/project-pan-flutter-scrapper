@@ -285,7 +285,9 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError('BancoChile depositary account transactions not implemented');
+    throw UnimplementedError(
+      'BancoChile depositary account transactions not implemented',
+    );
   }
 
   @override
@@ -295,7 +297,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   ) async {
     try {
       final rawProducts = await _getRawProducts(credentials);
-      final rawProductId = productId; // BancoChile productId is just the card ID
+      final rawProductId =
+          productId; // BancoChile productId is just the card ID
 
       final card = rawProducts.productos.firstWhere(
         (card) => card.id == rawProductId,
@@ -330,7 +333,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         throw Exception('Empty response from bill periods API');
       }
 
-      final listaNacional = responseData['listaNacional'] as List<dynamic>? ?? [];
+      final listaNacional =
+          responseData['listaNacional'] as List<dynamic>? ?? [];
       final listaInternacional =
           responseData['listaInternacional'] as List<dynamic>? ?? [];
 
@@ -480,5 +484,15 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
       log('Error fetching BancoChile credit card bill PDF: $e');
       rethrow;
     }
+  }
+
+  @override
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) {
+    // TODO: implement getCreditCardUnbilledTransactions
+    throw UnimplementedError();
   }
 }

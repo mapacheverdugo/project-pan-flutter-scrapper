@@ -83,4 +83,16 @@ class PanScrapperService {
   ) async {
     return _client.getCreditCardBill(credentials, productId, periodId);
   }
+
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) async {
+    return _client.getCreditCardUnbilledTransactions(
+      credentials,
+      productId,
+      transactionType,
+    );
+  }
 }

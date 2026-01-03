@@ -537,6 +537,16 @@ class ClItauPersonasConnectionService extends ConnectionService {
   ) async {
     throw UnimplementedError('Itau credit card bill PDF not implemented');
   }
+
+  @override
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) {
+    // TODO: implement getCreditCardUnbilledTransactions
+    throw UnimplementedError();
+  }
 }
 
 class _Period {

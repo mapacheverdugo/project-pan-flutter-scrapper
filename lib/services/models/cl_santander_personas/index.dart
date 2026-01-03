@@ -1,7 +1,9 @@
 export 'card_devices_management.dart';
 export 'card_response_model.dart';
+export 'credit_card_unbilled_transaction_response_model.dart';
 export 'depositary_account_transaction_response_model.dart';
 export 'product_id_metadata.dart';
 export 'products_response_model.dart';
 export 'properties_response_model.dart';
+export 'tarjetas_de_credito_consulta_ultimos_movimientos_response_model.dart';
 export 'token_model.dart';

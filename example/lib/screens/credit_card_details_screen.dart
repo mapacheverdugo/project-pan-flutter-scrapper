@@ -380,18 +380,16 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
     try {
       // Handle unbilled period - for now, we'll skip it or show a message
       if (_selectedNationalPeriodId == 'unbilled') {
+        final unbilledTransactions = await widget.service
+            .getCreditCardUnbilledTransactions(
+              widget.credentials.resultCredentials,
+              widget.product.id,
+              CurrencyType.national,
+            );
         setState(() {
           _isLoadingNationalTransactions = false;
-          _nationalTransactions = [];
+          _nationalTransactions = unbilledTransactions;
         });
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Unbilled period transactions not yet implemented'),
-            ),
-          );
-        }
-        return;
       }
 
       final bill = await widget.service.getCreditCardBill(
@@ -424,17 +422,16 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
     try {
       // Handle unbilled period - for now, we'll skip it or show a message
       if (_selectedInternationalPeriodId == 'unbilled') {
+        final unbilledTransactions = await widget.service
+            .getCreditCardUnbilledTransactions(
+              widget.credentials.resultCredentials,
+              widget.product.id,
+              CurrencyType.international,
+            );
         setState(() {
           _isLoadingInternationalTransactions = false;
-          _internationalTransactions = [];
+          _internationalTransactions = unbilledTransactions;
         });
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Unbilled period transactions not yet implemented'),
-            ),
-          );
-        }
         return;
       }
 

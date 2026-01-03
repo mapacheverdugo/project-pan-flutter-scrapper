@@ -13,6 +13,11 @@ abstract class ConnectionService {
     String credentials,
     String productId,
   );
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  );
   Future<CreditCardBill> getCreditCardBill(
     String credentials,
     String productId,

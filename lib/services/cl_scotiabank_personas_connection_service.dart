@@ -578,4 +578,14 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       rethrow;
     }
   }
+
+  @override
+  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+    String credentials,
+    String productId,
+    CurrencyType transactionType,
+  ) {
+    // TODO: implement getCreditCardUnbilledTransactions
+    throw UnimplementedError();
+  }
 }
