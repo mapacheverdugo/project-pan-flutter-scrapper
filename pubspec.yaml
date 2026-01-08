@@ -16,6 +16,10 @@ dependencies:
   html: ^0.15.6
   dio_cookie_manager: ^3.3.0
   cookie_jar: ^4.0.8
+  validate_rut: ^0.2.2
+  cached_network_svg_image: ^1.2.0
+  animations: ^2.1.1
+  currency_formatter: ^2.2.0
 
 dev_dependencies:
   flutter_test:

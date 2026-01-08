@@ -43,6 +43,8 @@ class PanScrapperService {
       case Institution.bancoEstado:
         _client = ClBancoEstadoPersonasConnectionService(_dio, _getWebview);
         break;
+      default:
+        throw Exception('Institution not supported');
     }
   }
 
@@ -52,6 +54,15 @@ class PanScrapperService {
       context: context,
       builder: (context, webview) => Scaffold(appBar: AppBar(), body: webview),
     );
+  }
+
+  static Future<List<Institution>> getAvailableInstitutions() async {
+    return [
+      Institution.santander,
+      Institution.itau,
+      Institution.scotiabank,
+      Institution.bancoChile,
+    ];
   }
 
   Future<String> auth(String username, String password) async {

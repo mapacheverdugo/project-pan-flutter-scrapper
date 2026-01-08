@@ -92,7 +92,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'Amount: ${_transactions[index].amount.amount} ${_transactions[index].amount.currency}',
+                                'Amount: ${_transactions[index].amount.formattedDependingOnCurrency} ${_transactions[index].amount.currency}',
                               ),
                               if (_transactions[index].transactionDate != null)
                                 Text(
@@ -166,7 +166,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         _buildTableRow(
           'Available Amount',
           widget.product.availableAmount != null
-              ? '${widget.product.availableAmount!.amount} ${widget.product.availableAmount!.currency}'
+              ? '${widget.product.availableAmount!.formattedDependingOnCurrency} ${widget.product.availableAmount!.currency}'
               : 'null',
         ),
         _buildTableRow(

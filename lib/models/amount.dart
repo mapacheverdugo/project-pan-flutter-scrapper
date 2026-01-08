@@ -1,7 +1,16 @@
-class Amount {
-  late final num? _value;
+import 'package:pan_scrapper/models/currency.dart';
+import 'package:pan_scrapper/models/currency_ext.dart';
 
-  Amount.parse(String text, AmountOptions options) {
+class Amount {
+  final Currency currency;
+  final int value;
+
+  factory Amount.parse(
+    String text,
+    Currency currency, {
+    AmountParseOptions? options,
+  }) {
+    options ??= AmountParseOptions();
     final thousandSeparator = options.thousandSeparator;
     final decimalSeparator = options.decimalSeparator;
     final currencyDecimals = options.currencyDecimals;
@@ -34,23 +43,53 @@ class Amount {
     }
 
     final value = num.tryParse('$explicitSymbol$text');
-    _value = value != null ? value * (1 / factor) : null;
+    final finalValue = value != null ? value * (1 / factor) : null;
+
+    return Amount(currency: currency, value: finalValue?.toInt() ?? 0);
   }
+
+  static Amount? tryParse(
+    String text,
+    Currency currency, {
+    AmountParseOptions? options,
+  }) {
+    try {
+      return Amount.parse(text, currency, options: options);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Amount({required this.currency, required this.value});
 
   static String _removeEverythingButNumberSymbols(String text) {
     return text.replaceAll(RegExp(r'[^0-9.+\-,]'), '');
   }
 
-  num? get value => _value;
+  String get formatted => currency.format(value.toDouble());
+  String get formattedWithCurrency => '$formatted ${currency.isoLetters}';
+  String get formattedDependingOnCurrency =>
+      currency == Currency.clp ? formatted : formattedWithCurrency;
+
+  factory Amount.fromJson(Map<String, dynamic> json) {
+    return Amount(
+      currency: Currency.fromIsoLetters(json['currency'] as String),
+      value: (json['value'] as num).toInt(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'currency': currency.isoLetters, 'value': value};
+  }
 }
 
-class AmountOptions {
+class AmountParseOptions {
   final double factor;
   final String? thousandSeparator;
   final String? decimalSeparator;
   final int currencyDecimals;
 
-  AmountOptions({
+  AmountParseOptions({
     this.factor = 1,
     this.thousandSeparator = ',',
     this.decimalSeparator = '.',

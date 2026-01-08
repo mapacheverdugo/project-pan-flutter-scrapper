@@ -4,6 +4,7 @@ import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/pan_connect.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -23,6 +24,15 @@ class _MainScreenState extends State<MainScreen> {
         child: SafeArea(
           child: Column(
             children: <Widget>[
+              ElevatedButton(
+                onPressed: () async {
+                  await PanConnect.launch(
+                    context,
+                    selectedInstitution: Institution.santander,
+                  );
+                },
+                child: Text('Launch'),
+              ),
               ListView.builder(
                 shrinkWrap: true,
                 itemCount: Institution.values.length,

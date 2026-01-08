@@ -384,8 +384,17 @@ class HeadlessWebview implements WebviewInstance {
       variationMax: maxVariation.inMilliseconds,
     );
 
-    final res = await c.evaluateJavascript(source: js);
-    if (res != true) {
+    var res = await c.callAsyncJavaScript(
+      functionBody: js,
+      arguments: {
+        'selector': selector,
+        'text': text,
+        'baseDelay': delay.isNegative ? 0 : delay.inMilliseconds,
+        'varMin': minVariation.isNegative ? 0 : minVariation.inMilliseconds,
+        'varMax': maxVariation.isNegative ? 0 : maxVariation.inMilliseconds,
+      },
+    );
+    if (res?.value != true) {
       throw Exception('type() failed for selector "$selector"');
     }
   }

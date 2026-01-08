@@ -5,7 +5,6 @@ import 'package:example/screens/credit_card_details_screen.dart';
 import 'package:example/screens/product_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/models/index.dart';
-import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ProductCard extends StatelessWidget {
@@ -75,7 +74,7 @@ class ProductCard extends StatelessWidget {
                   children: [
                     SizedBox(height: 4),
                     Text(
-                      'Disponible: ${product.availableAmount?.amount.toString()}',
+                      'Disponible: ${product.availableAmount?.formattedDependingOnCurrency}',
                     ),
                   ],
                 ),
@@ -85,12 +84,16 @@ class ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 4),
-                    Text('Balance ${creditBalance.currency}:'),
-                    Text('Cupo: ${creditBalance.creditLimitAmount.toString()}'),
+                    Text('Balance ${creditBalance.currency.isoLetters}:'),
                     Text(
-                      'Disponible: ${creditBalance.availableAmount.toString()}',
+                      'Cupo: ${creditBalance.creditLimitAmount.formattedDependingOnCurrency}',
                     ),
-                    Text('Utilizado: ${creditBalance.usedAmount.toString()}'),
+                    Text(
+                      'Disponible: ${creditBalance.availableAmount.formattedDependingOnCurrency}',
+                    ),
+                    Text(
+                      'Utilizado: ${creditBalance.usedAmount.formattedDependingOnCurrency}',
+                    ),
                     SizedBox(height: 4),
                   ],
                 ),

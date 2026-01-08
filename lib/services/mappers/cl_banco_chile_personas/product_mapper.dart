@@ -1,7 +1,7 @@
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
-import 'package:pan_scrapper/models/available_amount.dart';
+import 'package:pan_scrapper/models/amount.dart';
 import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/models/product_type.dart';
 import 'package:pan_scrapper/services/models/cl_banco_chile_personas/index.dart';
@@ -64,7 +64,7 @@ class ClBancoChilePersonasProductMapper {
 
     // Process each product
     for (final producto in rawProductsMap.values) {
-      AvailableAmount? availableAmount;
+      Amount? availableAmount;
       final creditBalances = <CreditBalance>[];
       final productId = producto.id;
       final productType = _getProductType(producto.tipo);
@@ -74,23 +74,30 @@ class ClBancoChilePersonasProductMapper {
         final cardBalance = cardsBalancesMap[productId]!;
 
         for (final cupo in cardBalance.cupos) {
-          final currency = cupo.moneda == r'$' ? 'CLP' : cupo.moneda;
-          final options = currency == 'CLP'
+          final currency = cupo.moneda == r'$'
+              ? Currency.clp
+              : Currency.fromIsoLetters(cupo.moneda);
+          final options = currency == Currency.clp
               ? _nationalOptions
               : _internationalOptions;
 
-          final creditLimit = Amount.parse(cupo.cupo.toString(), options).value;
-          final available = Amount.parse(
+          final creditLimit = Amount.tryParse(
+            cupo.cupo.toString(),
+            currency,
+            options: options,
+          );
+          final available = Amount.tryParse(
             cupo.disponible.toString(),
-            options,
-          ).value;
+            currency,
+            options: options,
+          );
           final used = cupo.cupo - cupo.disponible;
 
           if (creditLimit != null && available != null) {
             creditBalances.add(
               CreditBalance(
-                creditLimitAmount: creditLimit.toInt(),
-                availableAmount: available.toInt(),
+                creditLimitAmount: creditLimit.value,
+                availableAmount: available.value,
                 usedAmount: used.toInt(),
                 currency: currency,
               ),
@@ -103,36 +110,36 @@ class ClBancoChilePersonasProductMapper {
         if (depositaryBalance == null) continue;
 
         final currency = depositaryBalance.moneda == r'$'
-            ? 'CLP'
-            : depositaryBalance.moneda;
+            ? Currency.clp
+            : Currency.fromIsoLetters(depositaryBalance.moneda);
 
         if (depositaryBalance.cupo == 0 || depositaryBalance.cupo == null) {
-          availableAmount = AvailableAmount(
-            currency: currency,
-            amount: Amount.parse(
-              depositaryBalance.disponible.toString(),
-              _nationalOptions,
-            ).value!.toInt(),
+          availableAmount = Amount.tryParse(
+            depositaryBalance.disponible.toString(),
+            currency,
+            options: _nationalOptions,
           );
         } else {
-          final available = Amount.parse(
+          final available = Amount.tryParse(
             depositaryBalance.disponible.toString(),
-            _nationalOptions,
-          ).value;
+            currency,
+            options: _nationalOptions,
+          );
 
-          final creditLimit = Amount.parse(
+          final creditLimit = Amount.tryParse(
             depositaryBalance.cupo.toString(),
-            _nationalOptions,
-          ).value;
+            currency,
+            options: _nationalOptions,
+          );
 
           if (creditLimit != null && available != null) {
-            final used = creditLimit - available;
+            final used = creditLimit.value - available.value;
 
             creditBalances.add(
               CreditBalance(
-                creditLimitAmount: creditLimit.toInt(),
-                availableAmount: available.toInt(),
-                usedAmount: used.toInt(),
+                creditLimitAmount: creditLimit.value,
+                availableAmount: available.value,
+                usedAmount: used,
                 currency: currency,
               ),
             );
@@ -167,13 +174,13 @@ class ClBancoChilePersonasProductMapper {
     return productList;
   }
 
-  static final _nationalOptions = AmountOptions(
+  static final _nationalOptions = AmountParseOptions(
     thousandSeparator: null,
     decimalSeparator: '.',
     currencyDecimals: 0,
   );
 
-  static final _internationalOptions = AmountOptions(
+  static final _internationalOptions = AmountParseOptions(
     thousandSeparator: null,
     decimalSeparator: '.',
     currencyDecimals: 2,

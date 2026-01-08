@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/services/mappers/cl_santander_personas/depositary_account_transaction_mapper.dart';
@@ -359,7 +360,14 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         throw Exception('Product not found');
       }
 
-      final productCurrency = currentProduct.codigomoneda ?? 'CLP';
+      final codigomoneda = currentProduct.codigomoneda;
+
+      if (codigomoneda == null) {
+        throw Exception('Product currency not found');
+      }
+
+      final productCurrency =
+          Currency.tryFromIsoLetters(codigomoneda) ?? Currency.clp;
 
       // Paginated requests
       var shouldContinue = true;
@@ -368,7 +376,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
       do {
         final response = await _getRawDepositaryAccountRecentTransactionsPage(
           productIdMetadata: productIdMetadata,
-          productCurrency: productCurrency,
+          productCurrency: codigomoneda,
           accessToken: accessToken,
           endMovement: lastMovementNumber,
         );
@@ -757,11 +765,14 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
       }
 
       final model =
-          ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosResponseModel
-              .fromJson(responseData);
+          ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosResponseModel.fromJson(
+            responseData,
+          );
 
-      return ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper
-          .fromResponseModel(model, transactionType);
+      return ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper.fromResponseModel(
+        model,
+        transactionType,
+      );
     } catch (e) {
       log('Error fetching credit card unbilled transactions: $e');
       rethrow;

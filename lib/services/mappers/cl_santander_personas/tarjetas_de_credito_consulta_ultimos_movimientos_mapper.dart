@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
@@ -31,7 +31,9 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
       return [];
     }
 
-    final currency = transactionType == CurrencyType.national ? 'CLP' : 'USD';
+    final currency = transactionType == CurrencyType.national
+        ? Currency.clp
+        : Currency.usd;
     final transactions = <Transaction>[];
 
     for (final movimiento in matriz) {
@@ -48,19 +50,24 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
           continue;
         }
 
-        final amountOptions = AmountOptions(
+        final amountOptions = AmountParseOptions(
           factor: transactionType == CurrencyType.national ? 100 : 100,
           decimalSeparator: ',',
           thousandSeparator: '.',
         );
 
         final symbol = movimiento.indicadorDebeHaber == 'D' ? '-' : '+';
-        final amount = Amount.parse(symbol + importe, amountOptions);
-        final amountValue = amount.value;
+        final amount = Amount.tryParse(
+          symbol + importe,
+          currency,
+          options: amountOptions,
+        );
 
-        if (amountValue == null) {
+        if (amount == null) {
           continue;
         }
+
+        final amountValue = amount.value;
 
         // Parse date - format might be YYMMDD or YYYYMMDD
         final fecha = movimiento.fecha;
@@ -90,18 +97,12 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
             id: transactionId,
             type: TransactionType.default_,
             description: description,
-            amount: TransactionAmountRequired(
-              amount: amountInt,
-              currency: currency,
-            ),
+            amount: amount,
             billingCurrencyType: transactionType,
             transactionDate: transactionDate,
             transactionTime: null,
             processingDate: null,
-            originalAmount: TransactionAmountOptional(
-              amount: amountInt,
-              currency: currency,
-            ),
+            originalAmount: amount,
             city: ciudad,
             country: null,
           ),

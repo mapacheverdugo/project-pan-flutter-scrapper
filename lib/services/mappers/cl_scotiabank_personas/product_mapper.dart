@@ -1,8 +1,8 @@
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/available_amount.dart';
+import 'package:pan_scrapper/models/amount.dart';
 import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/models/product_type.dart';
 import 'package:pan_scrapper/services/models/cl_scotiabank_personas/card_with_details_model.dart';
@@ -39,20 +39,22 @@ class ClScotiabankPersonasProductMapper {
     return accounts.map((account) {
       final productType = _getProductType(account.type);
 
-      final currency = account.currencyCode;
-      final options = currency == 'CLP'
+      final currency = Currency.fromIsoLetters(account.currencyCode);
+      final options = currency == Currency.clp
           ? _nationalOptions
           : _internationalOptions;
 
       final availableAmount = Amount.parse(
         account.amountAvailable,
-        options,
-      ).value!;
+        currency,
+        options: options,
+      ).value;
 
       final creditLimitAmount = Amount.parse(
         account.totalBalance,
-        options,
-      ).value!;
+        currency,
+        options: options,
+      ).value;
 
       final usedAmount = creditLimitAmount - availableAmount;
 
@@ -74,10 +76,7 @@ class ClScotiabankPersonasProductMapper {
         name: account.description,
         type: productType,
         availableAmount: creditBalances.isEmpty
-            ? AvailableAmount(
-                amount: availableAmount.toInt(),
-                currency: currency,
-              )
+            ? Amount(value: availableAmount.toInt(), currency: currency)
             : null,
         creditBalances: creditBalances,
         isForSecondaryCardHolder: false,
@@ -101,22 +100,26 @@ class ClScotiabankPersonasProductMapper {
       // The structure may vary, so we'll need to adjust based on actual API response
       final creditBalances = <CreditBalance>[];
 
-      final nationalAmount = Amount.parse(
+      final nationalAmount = Amount.tryParse(
         details.nationalAmount!,
-        _nationalOptions,
-      ).value;
-      final nationalAmountAvailable = Amount.parse(
+        Currency.clp,
+        options: _nationalOptions,
+      )?.value;
+      final nationalAmountAvailable = Amount.tryParse(
         details.nationalAmountAvailable!,
-        _nationalOptions,
-      ).value;
-      final internationalAmount = Amount.parse(
+        Currency.clp,
+        options: _nationalOptions,
+      )?.value;
+      final internationalAmount = Amount.tryParse(
         details.internationalAmount!,
-        _internationalOptions,
-      ).value;
-      final internationalAmountAvailable = Amount.parse(
+        Currency.usd,
+        options: _internationalOptions,
+      )?.value;
+      final internationalAmountAvailable = Amount.tryParse(
         details.internationalAmountAvailable!,
-        _internationalOptions,
-      ).value;
+        Currency.usd,
+        options: _internationalOptions,
+      )?.value;
 
       if (nationalAmount != null && nationalAmountAvailable != null) {
         final usedAmount = nationalAmount - nationalAmountAvailable;
@@ -125,7 +128,7 @@ class ClScotiabankPersonasProductMapper {
             creditLimitAmount: nationalAmount.toInt(),
             availableAmount: nationalAmountAvailable.toInt(),
             usedAmount: usedAmount.toInt(),
-            currency: 'CLP',
+            currency: Currency.clp,
           ),
         );
       }
@@ -137,7 +140,7 @@ class ClScotiabankPersonasProductMapper {
             creditLimitAmount: internationalAmount.toInt(),
             availableAmount: internationalAmountAvailable.toInt(),
             usedAmount: usedAmount.toInt(),
-            currency: 'USD',
+            currency: Currency.usd,
           ),
         );
       }
@@ -154,13 +157,13 @@ class ClScotiabankPersonasProductMapper {
     }).toList();
   }
 
-  static final _nationalOptions = AmountOptions(
+  static final _nationalOptions = AmountParseOptions(
     thousandSeparator: '.',
     decimalSeparator: ',',
     currencyDecimals: 0,
   );
 
-  static final _internationalOptions = AmountOptions(
+  static final _internationalOptions = AmountParseOptions(
     thousandSeparator: '.',
     decimalSeparator: ',',
     currencyDecimals: 2,

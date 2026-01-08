@@ -1,4 +1,4 @@
-import 'package:pan_scrapper/models/available_amount.dart';
+import 'package:pan_scrapper/models/amount.dart';
 import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
 import 'package:pan_scrapper/models/product_type.dart';
@@ -10,7 +10,7 @@ class Product {
   final String? cardLast4Digits;
   final String name;
   final ProductType type;
-  final AvailableAmount? availableAmount;
+  final Amount? availableAmount;
   final List<CreditBalance>? creditBalances;
   final bool isForSecondaryCardHolder;
 
@@ -43,9 +43,7 @@ class Product {
         orElse: () => ProductType.unknown,
       ),
       availableAmount: json['availableAmount'] != null
-          ? AvailableAmount.fromJson(
-              json['availableAmount'] as Map<String, dynamic>,
-            )
+          ? Amount.fromJson(json['availableAmount'] as Map<String, dynamic>)
           : null,
       creditBalances: json['creditBalances'] != null
           ? (json['creditBalances'] as List<dynamic>)

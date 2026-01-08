@@ -1,6 +1,6 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 
 class ClItauPersonasProductMapper {
@@ -55,28 +55,26 @@ class ClItauPersonasProductMapper {
 
     // Detectar si USD o CLP por texto
     final isUsd = raw.toUpperCase().contains('USD') || raw.contains('US\$');
-    final currency = isUsd ? 'USD' : 'CLP';
+    final currency = isUsd ? Currency.usd : Currency.clp;
 
-    final value = Amount.parse(
+    final amount = Amount.tryParse(
       raw,
-      AmountOptions(
+      currency,
+      options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
         currencyDecimals: isUsd ? 2 : 0,
       ),
-    ).value;
+    );
 
-    if (value == null) return null;
+    if (amount == null) return null;
 
     return Product(
       id: fallbackNumber,
       number: fallbackNumber,
       name: name,
       type: ProductType.depositaryAccount,
-      availableAmount: AvailableAmount(
-        currency: currency,
-        amount: value.toInt(),
-      ),
+      availableAmount: amount,
       creditBalances: null,
       isForSecondaryCardHolder: false,
       cardBrand: null,
@@ -103,7 +101,8 @@ class ClItauPersonasProductMapper {
     final used = usedRaw.isNotEmpty
         ? Amount.parse(
             usedRaw,
-            AmountOptions(
+            Currency.clp,
+            options: AmountParseOptions(
               thousandSeparator: '.',
               decimalSeparator: ',',
               currencyDecimals: 0,
@@ -115,13 +114,18 @@ class ClItauPersonasProductMapper {
     final available = _readAmountByNameContains(
       root,
       containsAny: const ['dispon'],
+      currency: Currency.clp,
     );
-    final total = _readAmountByNameContains(root, containsAny: const ['total']);
+    final total = _readAmountByNameContains(
+      root,
+      containsAny: const ['total'],
+      currency: Currency.clp,
+    );
 
     if (used == null || available == null || total == null) return null;
 
     final balance = CreditBalance(
-      currency: 'CLP',
+      currency: Currency.clp,
       creditLimitAmount: total.toInt(),
       availableAmount: available.toInt(),
       usedAmount: used.toInt(),
@@ -157,7 +161,8 @@ class ClItauPersonasProductMapper {
     final available = _readAmountFrom(
       doc,
       selector: '#saldoDispCtaCteId span[name="saldoDisponible"]',
-      options: AmountOptions(
+      currency: currency,
+      options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
         currencyDecimals: currency == 'USD' ? 2 : 0,
@@ -191,10 +196,7 @@ class ClItauPersonasProductMapper {
       number: number,
       name: meta.name,
       type: ProductType.depositaryAccount,
-      availableAmount: AvailableAmount(
-        currency: currency,
-        amount: available.toInt(),
-      ),
+      availableAmount: available,
       creditBalances: null,
       cardBrand: null,
       cardLast4Digits: null,
@@ -211,11 +213,14 @@ class ClItauPersonasProductMapper {
         .trim();
     if (number.isEmpty) return null;
 
+    final currency = _detectCurrencyFromContainer(container) ?? Currency.clp;
+
     // Cupo utilizado: se ve como <span name="cupoUtilizado">$ ...</span>
     final used = _readAmountWithin(
       container,
       selector: 'span[name="cupoUtilizado"]',
-      options: AmountOptions(
+      currency: currency,
+      options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
         currencyDecimals: 0,
@@ -231,25 +236,20 @@ class ClItauPersonasProductMapper {
     final total = _readAmountByHeuristic(container, nameContains: ['total']);
 
     // Moneda: si llegara a venir USD en los textos, la detectamos.
-    final currency = _detectCurrencyFromContainer(container) ?? 'CLP';
 
     if (used == null || available == null || total == null) {
-      // Si falta algo, igual puedes optar por no retornar el producto.
-      // Yo lo devuelvo solo si al menos existe 'used' y 'available' (ajústalo a tu gusto).
-      if (used == null || available == null) return null;
+      return null;
     }
 
     final creditBalances = <CreditBalance>[];
-    if (used != null && available != null && total != null) {
-      creditBalances.add(
-        CreditBalance(
-          currency: currency,
-          creditLimitAmount: total.toInt(),
-          availableAmount: available.toInt(),
-          usedAmount: used.toInt(),
-        ),
-      );
-    }
+    creditBalances.add(
+      CreditBalance(
+        currency: currency,
+        creditLimitAmount: total.value,
+        availableAmount: available.value,
+        usedAmount: used.value,
+      ),
+    );
 
     return Product(
       id: number,
@@ -267,6 +267,7 @@ class ClItauPersonasProductMapper {
   static num? _readAmountByNameContains(
     Element root, {
     required List<String> containsAny,
+    required Currency currency,
   }) {
     final spans = root.querySelectorAll('span[name]');
     for (final s in spans) {
@@ -281,7 +282,8 @@ class ClItauPersonasProductMapper {
       // CLP style (si en tu línea de crédito hubiera USD, ajusta aquí)
       final v = Amount.parse(
         raw,
-        AmountOptions(
+        currency,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 0,
@@ -293,31 +295,33 @@ class ClItauPersonasProductMapper {
     return null;
   }
 
-  num? _readAmountFrom(
+  Amount? _readAmountFrom(
     Document doc, {
     required String selector,
-    required AmountOptions options,
+    required Currency currency,
+    required AmountParseOptions options,
   }) {
     final el = doc.querySelector(selector);
     final raw = (el?.text ?? '').trim();
     if (raw.isEmpty) return null;
-    return Amount.parse(raw, options).value;
+    return Amount.tryParse(raw, currency, options: options);
   }
 
-  num? _readAmountWithin(
+  Amount? _readAmountWithin(
     Element root, {
     required String selector,
-    required AmountOptions options,
+    required Currency currency,
+    required AmountParseOptions options,
   }) {
     final el = root.querySelector(selector);
     final raw = (el?.text ?? '').trim();
     if (raw.isEmpty) return null;
-    return Amount.parse(raw, options).value;
+    return Amount.tryParse(raw, currency, options: options);
   }
 
   /// Busca dentro del contenedor spans con atributo `name`,
   /// y retorna el primer monto cuyo `name` contenga cualquiera de los strings.
-  num? _readAmountByHeuristic(
+  Amount? _readAmountByHeuristic(
     Element root, {
     required List<String> nameContains,
   }) {
@@ -332,27 +336,30 @@ class ClItauPersonasProductMapper {
       final raw = (s.text).trim();
       if (raw.isEmpty) continue;
 
-      // Detecta USD vs CLP por el texto.
-      final currencyDecimals = raw.toUpperCase().contains('USD') ? 2 : 0;
+      final currency = raw.toUpperCase().contains('USD')
+          ? Currency.usd
+          : Currency.clp;
 
-      final value = Amount.parse(
+      // Detecta USD vs CLP por el texto.
+      final currencyDecimals = currency == Currency.usd ? 2 : 0;
+
+      return Amount.tryParse(
         raw,
-        AmountOptions(
+        currency,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: currencyDecimals,
         ),
-      ).value;
-
-      if (value != null) return value;
+      );
     }
     return null;
   }
 
-  String? _detectCurrencyFromContainer(Element root) {
+  Currency? _detectCurrencyFromContainer(Element root) {
     final text = root.text.toUpperCase();
-    if (text.contains('USD')) return 'USD';
-    if (text.contains('\$')) return 'CLP';
+    if (text.contains('USD')) return Currency.usd;
+    if (text.contains('\$')) return Currency.clp;
     return null;
   }
 
@@ -368,7 +375,7 @@ class ClItauPersonasProductMapper {
         lower.contains('dólar') ||
         lower.contains('dolar') ||
         lower.contains('usd');
-    final currency = isUsd ? 'USD' : 'CLP';
+    final currency = isUsd ? Currency.usd : Currency.clp;
 
     // Extrae el "****9009" si existe
     final masked = RegExp(
@@ -393,7 +400,7 @@ class ClItauPersonasProductMapper {
 class _AccountMeta {
   final String name;
   final String? accountMaskedNumber;
-  final String currency;
+  final Currency currency;
 
   _AccountMeta({
     required this.name,

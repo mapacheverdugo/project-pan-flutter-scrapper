@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
@@ -18,20 +19,6 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
     final bytes = utf8.encode(combined);
     final digest = sha256.convert(bytes);
     return digest.toString().substring(0, 16);
-  }
-
-  /// Get ISO currency code from ISO number
-  static String _getIsoLettersCurrencyFromIsoNumber(int isoNumber) {
-    // ISO 4217 currency codes
-    // 152 = CLP, 840 = USD
-    switch (isoNumber) {
-      case 152:
-        return 'CLP';
-      case 840:
-        return 'USD';
-      default:
-        return 'CLP'; // Default to CLP
-    }
   }
 
   /// Get 2-letter country code from 3-letter ISO country code
@@ -53,7 +40,10 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
   static List<Transaction> fromUnbilledTransactionResponseModel(
     ClSantanderPersonasCreditCardUnbilledTransactionResponseModel model,
   ) {
-    final matriz = model.data.conMovimientosPorFacturarResponse.output
+    final matriz = model
+        .data
+        .conMovimientosPorFacturarResponse
+        .output
         .matrizMovimientosPorFacturar;
 
     if (matriz.isEmpty) {
@@ -71,9 +61,9 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
         }
 
         final isoNumber = int.tryParse(codigoMoneda) ?? 152;
-        final currency = _getIsoLettersCurrencyFromIsoNumber(isoNumber);
+        final currency = Currency.fromIsoNum(isoNumber.toString());
 
-        final billingCurrencyType = currency == 'CLP'
+        final billingCurrencyType = currency == Currency.clp
             ? CurrencyType.national
             : CurrencyType.international;
 
@@ -129,18 +119,12 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
             id: transactionId,
             type: TransactionType.default_,
             description: description,
-            amount: TransactionAmountRequired(
-              amount: amountInt,
-              currency: currency,
-            ),
+            amount: Amount(value: amountInt, currency: currency),
             billingCurrencyType: billingCurrencyType,
             transactionDate: transactionDate,
             transactionTime: null,
             processingDate: null,
-            originalAmount: TransactionAmountOptional(
-              amount: amountInt,
-              currency: currency,
-            ),
+            originalAmount: Amount(value: amountInt, currency: currency),
             city: ciudad,
             country: country,
           ),
@@ -154,4 +138,3 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
     return transactions;
   }
 }
-

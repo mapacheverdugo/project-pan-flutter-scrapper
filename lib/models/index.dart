@@ -1,4 +1,4 @@
-export 'available_amount.dart';
+export 'amount.dart';
 export 'billing_status.dart';
 export 'card_brand.dart';
 export 'credit_balance.dart';
@@ -13,6 +13,3 @@ export 'transaction.dart';
 export 'transaction_amount.dart';
 export 'transaction_credit_debit.dart';
 export 'transaction_type.dart';
-
-
-

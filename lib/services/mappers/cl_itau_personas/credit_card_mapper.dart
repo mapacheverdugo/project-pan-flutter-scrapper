@@ -2,7 +2,7 @@ import 'dart:developer';
 
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 
 class ClItauPersonasCreditCardMapper {
@@ -24,7 +24,8 @@ class ClItauPersonasCreditCardMapper {
       final availableClp = _readAmount(
         doc,
         selector: '#CupoDisponiblePesos',
-        options: AmountOptions(
+        currency: Currency.clp,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 0,
@@ -34,7 +35,8 @@ class ClItauPersonasCreditCardMapper {
       final usedClp = _readAmount(
         doc,
         selector: '#DeudaNacional',
-        options: AmountOptions(
+        currency: Currency.clp,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 0,
@@ -44,7 +46,8 @@ class ClItauPersonasCreditCardMapper {
       final totalClp = _readAmount(
         doc,
         selector: '#CupoTotalNacional',
-        options: AmountOptions(
+        currency: Currency.clp,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 0,
@@ -54,7 +57,8 @@ class ClItauPersonasCreditCardMapper {
       final availableUsd = _readAmount(
         doc,
         selector: '#CupoDisponibleDolar',
-        options: AmountOptions(
+        currency: Currency.usd,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 2,
@@ -64,7 +68,8 @@ class ClItauPersonasCreditCardMapper {
       final usedUsd = _readAmount(
         doc,
         selector: '#DeudaInternacional',
-        options: AmountOptions(
+        currency: Currency.usd,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 2,
@@ -74,7 +79,8 @@ class ClItauPersonasCreditCardMapper {
       final totalUsd = _readAmount(
         doc,
         selector: '#CupoTotalInternacional',
-        options: AmountOptions(
+        currency: Currency.usd,
+        options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
           currencyDecimals: 2,
@@ -86,7 +92,7 @@ class ClItauPersonasCreditCardMapper {
       if (availableClp != null && totalClp != null && usedClp != null) {
         creditBalances.add(
           CreditBalance(
-            currency: 'CLP',
+            currency: Currency.clp,
             creditLimitAmount: totalClp.toInt(),
             availableAmount: availableClp.toInt(),
             usedAmount: usedClp.toInt(),
@@ -97,7 +103,7 @@ class ClItauPersonasCreditCardMapper {
       if (availableUsd != null && totalUsd != null && usedUsd != null) {
         creditBalances.add(
           CreditBalance(
-            currency: 'USD',
+            currency: Currency.usd,
             creditLimitAmount: totalUsd.toInt(),
             availableAmount: availableUsd.toInt(),
             usedAmount: usedUsd.toInt(),
@@ -153,13 +159,14 @@ class ClItauPersonasCreditCardMapper {
   static num? _readAmount(
     Document doc, {
     required String selector,
-    required AmountOptions options,
+    required Currency currency,
+    required AmountParseOptions options,
   }) {
     final Element? el = doc.querySelector(selector);
     final String raw = (el?.text ?? '').trim();
     if (raw.isEmpty) return null;
 
-    final amount = Amount.parse(raw, options);
+    final amount = Amount.parse(raw, currency, options: options);
     return amount.value;
   }
 }

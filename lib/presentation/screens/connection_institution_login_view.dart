@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
+import 'package:pan_scrapper/presentation/widgets/default_button.dart';
+import 'package:pan_scrapper/presentation/widgets/institution_avatar.dart';
+import 'package:pan_scrapper/presentation/widgets/password_form_field.dart';
+import 'package:pan_scrapper/presentation/widgets/rut_form_field.dart';
+
+class ConnectionInstitutionLoginView extends StatefulWidget {
+  const ConnectionInstitutionLoginView({
+    super.key,
+    required this.institution,
+    required this.onLoginPressed,
+    required this.onResetPasswordPressed,
+  });
+
+  final Institution institution;
+  final void Function(BuildContext context, String username, String password)
+  onLoginPressed;
+  final void Function(BuildContext context) onResetPasswordPressed;
+
+  @override
+  State<ConnectionInstitutionLoginView> createState() =>
+      _ConnectionInstitutionLoginViewState();
+}
+
+class _ConnectionInstitutionLoginViewState
+    extends State<ConnectionInstitutionLoginView> {
+  String? _username;
+  String? _password;
+
+  @override
+  Widget build(BuildContext context) {
+    final connectionNotifier = ConnectionProvider.of(context);
+    final isLoading = connectionNotifier.value.isLoading;
+    final institutionName = widget.institution.name;
+
+    return CustomScrollView(
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: AutofillGroup(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: InstitutionAvatar(
+                    institution: widget.institution,
+                    width: 56,
+                    height: 56,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Title
+                Text(
+                  'Inicia sesión en $institutionName',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Instructions
+                Text(
+                  'Ingresa tus credenciales de $institutionName para conectar tu cuenta a Kane.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                RutFormField(
+                  decoration: InputDecoration(labelText: 'RUT'),
+                  enabled: !isLoading,
+                  onChanged: (value) {
+                    setState(() {
+                      _username = value?.clean;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                PasswordFormField(
+                  decoration: InputDecoration(labelText: 'Contraseña'),
+                  enabled: !isLoading,
+                  onChanged: (value) {
+                    setState(() {
+                      _password = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Spacer(),
+                Text(
+                  'Al proporcionar tus credenciales, permites que Kane Connect acceda a tus datos financieros y aceptas que Kane Connect o tu institución puedan enviarte un código de acceso por SMS según nuestros o sus términos de SMS.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: DefaultButton(
+                    text: 'Enviar',
+                    size: DefaultButtonSize.lg,
+                    isLoading: isLoading,
+                    onPressed: () {
+                      if (_username == null || _password == null) {
+                        return;
+                      }
+
+                      widget.onLoginPressed(context, _username!, _password!);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Center(
+                  child: GestureDetector(
+                    onTap: isLoading
+                        ? null
+                        : () {
+                            // TODO: Handle reset password
+                          },
+                    child: Text(
+                      'Restablecer contraseña',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

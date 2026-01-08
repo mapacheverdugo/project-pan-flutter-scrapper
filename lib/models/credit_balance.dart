@@ -1,20 +1,25 @@
+import 'package:pan_scrapper/models/amount.dart';
+import 'package:pan_scrapper/models/currency.dart';
+
 class CreditBalance {
-  final int creditLimitAmount;
-  final String currency;
-  final int availableAmount;
-  final int usedAmount;
+  final Amount creditLimitAmount;
+  final Currency currency;
+  final Amount availableAmount;
+  final Amount usedAmount;
 
   CreditBalance({
-    required this.creditLimitAmount,
+    required int creditLimitAmount,
+    required int availableAmount,
+    required int usedAmount,
     required this.currency,
-    required this.availableAmount,
-    required this.usedAmount,
-  });
+  }) : creditLimitAmount = Amount(currency: currency, value: creditLimitAmount),
+       availableAmount = Amount(currency: currency, value: availableAmount),
+       usedAmount = Amount(currency: currency, value: usedAmount);
 
   factory CreditBalance.fromJson(Map<String, dynamic> json) {
     return CreditBalance(
       creditLimitAmount: (json['creditLimitAmount'] as num).toInt(),
-      currency: json['currency'] as String,
+      currency: Currency.fromIsoLetters(json['currency'] as String),
       availableAmount: (json['availableAmount'] as num).toInt(),
       usedAmount: (json['usedAmount'] as num).toInt(),
     );
@@ -23,16 +28,9 @@ class CreditBalance {
   Map<String, dynamic> toJson() {
     return {
       'creditLimitAmount': creditLimitAmount,
-      'currency': currency,
+      'currency': currency.isoLetters,
       'availableAmount': availableAmount,
       'usedAmount': usedAmount,
     };
   }
 }
-
-
-
-
-
-
-

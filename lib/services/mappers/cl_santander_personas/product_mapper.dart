@@ -1,9 +1,9 @@
 import 'package:collection/collection.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/available_amount.dart';
+import 'package:pan_scrapper/models/amount.dart';
 import 'package:pan_scrapper/models/card_brand.dart';
 import 'package:pan_scrapper/models/credit_balance.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/product.dart';
 import 'package:pan_scrapper/models/product_type.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
@@ -96,31 +96,42 @@ class ClSantanderPersonasProductMapper {
             final creditBalances = <CreditBalance>[];
 
             for (final product in products) {
-              final currency = product.codigomoneda;
-              final options = currency == 'CLP'
+              final codigomoneda = product.codigomoneda;
+
+              if (codigomoneda == null) continue;
+
+              final currency = Currency.fromIsoLetters(codigomoneda);
+              final options = currency == Currency.clp
                   ? _nationalOptions
                   : _internationalOptions;
 
-              final creditLimitAmount = Amount.parse(
+              final creditLimitAmount = Amount.tryParse(
                 product.cupo,
-                options,
-              ).value;
+                currency,
+                options: options,
+              );
               final availableAmount = Amount.parse(
                 product.montodisponible,
-                options,
-              ).value;
+                currency,
+                options: options,
+              );
 
-              final usedAmount = Amount.parse(
+              final usedAmount = Amount.tryParse(
                 product.montoutilizado,
-                options,
-              ).value;
+                currency,
+                options: options,
+              );
 
-              if (creditLimitAmount != 0 && currency != null) {
+              if (creditLimitAmount != null &&
+                  creditLimitAmount.value != 0 &&
+                  availableAmount.value != 0 &&
+                  usedAmount != null &&
+                  usedAmount.value != 0) {
                 creditBalances.add(
                   CreditBalance(
-                    creditLimitAmount: creditLimitAmount!.toInt(),
-                    availableAmount: availableAmount!.toInt(),
-                    usedAmount: usedAmount!.toInt(),
+                    creditLimitAmount: creditLimitAmount.value,
+                    availableAmount: availableAmount.value,
+                    usedAmount: usedAmount.value,
                     currency: currency,
                   ),
                 );
@@ -150,37 +161,41 @@ class ClSantanderPersonasProductMapper {
             // Depositary product
             final glosaCorta = products.first.glosacorta;
 
-            final currency = products.first.codigomoneda;
-            final options = currency == 'CLP'
+            final codigomoneda = products.first.codigomoneda;
+            if (codigomoneda == null) return;
+            final currency = Currency.fromIsoLetters(codigomoneda);
+            final options = currency == Currency.clp
                 ? _nationalOptions
                 : _internationalOptions;
 
-            final availableAmount = Amount.parse(
+            final availableAmount = Amount.tryParse(
               products.first.montodisponible,
-              options,
-            ).value;
-            final usedAmount = Amount.parse(
+              currency,
+              options: options,
+            );
+            final usedAmount = Amount.tryParse(
               products.first.montoutilizado,
-              options,
-            ).value;
-            final creditLimitAmount = Amount.parse(
+              currency,
+              options: options,
+            );
+            final creditLimitAmount = Amount.tryParse(
               products.first.cupo,
-              options,
-            ).value;
+              currency,
+              options: options,
+            );
 
             final creditBalances = <CreditBalance>[];
-            if (creditLimitAmount != 0 &&
-                creditLimitAmount != null &&
-                availableAmount != 0 &&
+            if (creditLimitAmount != null &&
+                creditLimitAmount.value != 0 &&
                 availableAmount != null &&
-                usedAmount != 0 &&
+                availableAmount.value != 0 &&
                 usedAmount != null &&
-                currency != null) {
+                usedAmount.value != 0) {
               creditBalances.add(
                 CreditBalance(
-                  creditLimitAmount: creditLimitAmount.toInt(),
-                  availableAmount: availableAmount.toInt(),
-                  usedAmount: usedAmount.toInt(),
+                  creditLimitAmount: creditLimitAmount.value,
+                  availableAmount: availableAmount.value,
+                  usedAmount: usedAmount.value,
                   currency: currency,
                 ),
               );
@@ -195,10 +210,7 @@ class ClSantanderPersonasProductMapper {
                 name: titleCase(glosaCorta?.toLowerCase() ?? ''),
                 type: productType,
                 availableAmount: creditBalances.isEmpty
-                    ? AvailableAmount(
-                        amount: availableAmount!.toInt(),
-                        currency: currency ?? 'CLP',
-                      )
+                    ? Amount(value: availableAmount!.value, currency: currency)
                     : null,
                 creditBalances: creditBalances,
                 isForSecondaryCardHolder: false,
@@ -242,14 +254,14 @@ class ClSantanderPersonasProductMapper {
     );
   }
 
-  static final _nationalOptions = AmountOptions(
+  static final _nationalOptions = AmountParseOptions(
     factor: 100,
     thousandSeparator: null,
     decimalSeparator: null,
     currencyDecimals: 0,
   );
 
-  static final _internationalOptions = AmountOptions(
+  static final _internationalOptions = AmountParseOptions(
     factor: 1,
     thousandSeparator: null,
     decimalSeparator: null,

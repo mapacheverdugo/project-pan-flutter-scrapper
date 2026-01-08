@@ -134,9 +134,8 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
         ),
         _buildTableRow(
           'Available Amount',
-          widget.product.availableAmount != null
-              ? '${widget.product.availableAmount!.amount} ${widget.product.availableAmount!.currency}'
-              : 'null',
+          widget.product.availableAmount?.formattedDependingOnCurrency ??
+              'null',
         ),
         _buildTableRow(
           'Credit Balances',
@@ -234,7 +233,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Amount: ${transaction.amount.amount} ${transaction.amount.currency}',
+                        'Amount: ${transaction.amount.formattedDependingOnCurrency}',
                       ),
                       if (transaction.transactionDate != null)
                         Text('Date: ${transaction.transactionDate}'),
@@ -326,7 +325,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Amount: ${transaction.amount.amount} ${transaction.amount.currency}',
+                        'Amount: ${transaction.amount.formattedDependingOnCurrency} ${transaction.amount.currency}',
                       ),
                       if (transaction.transactionDate != null)
                         Text('Date: ${transaction.transactionDate}'),

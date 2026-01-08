@@ -1,15 +1,15 @@
+import 'package:pan_scrapper/models/amount.dart';
 import 'package:pan_scrapper/models/billing_status.dart';
 import 'package:pan_scrapper/models/currency_type.dart';
-import 'package:pan_scrapper/models/transaction_amount.dart';
 import 'package:pan_scrapper/models/transaction_type.dart';
 
 class TransactionInstallments {
   final int currentCount;
   final int remainingCount;
   final int totalCount;
-  final TransactionAmountRequired currentAmount;
-  final TransactionAmountOptional? originalTransactionAmount;
-  final TransactionAmountOptional? totalFinalAmount;
+  final Amount currentAmount;
+  final Amount? originalTransactionAmount;
+  final Amount? totalFinalAmount;
   final double? interestRate;
   final String firstInstallmentDate;
 
@@ -44,13 +44,13 @@ class Transaction {
   final String id;
   final TransactionType type;
   final String description;
-  final TransactionAmountRequired amount;
+  final Amount amount;
   final CurrencyType? billingCurrencyType;
   final BillingStatus? billingStatus;
   final String? transactionDate;
   final String? transactionTime;
   final String? processingDate;
-  final TransactionAmountOptional? originalAmount;
+  final Amount? originalAmount;
   final TransactionInstallments? installments;
   final String? city;
   final String? country;

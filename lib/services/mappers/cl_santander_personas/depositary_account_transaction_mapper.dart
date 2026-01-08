@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
+import 'package:pan_scrapper/models/currency.dart';
 import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
@@ -33,13 +33,15 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
 
   static List<Transaction> fromResponseModel(
     ClSantanderPersonasDepositaryAccountTransactionResponseModel model,
-    String productCurrency,
+    Currency productCurrency,
   ) {
     if (model.movements.isEmpty) {
       return [];
     }
 
-    final currency = model.repositioningExit?.divisa ?? productCurrency;
+    final currency =
+        Currency.tryFromIsoLetters(model.repositioningExit?.divisa) ??
+        productCurrency;
     final transactions = <Transaction>[];
 
     for (final movement in model.movements) {
@@ -59,10 +61,13 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
           continue; // Skip transactions without amount
         }
 
-        final amount = Amount.parse(movementAmount, AmountOptions(factor: 100));
+        final amount = Amount.tryParse(
+          movementAmount,
+          Currency.clp,
+          options: AmountParseOptions(factor: 100),
+        );
 
-        final amountValue = amount.value;
-        if (amountValue == null) {
+        if (amount == null) {
           continue; // Skip transactions without amount
         }
 
@@ -71,7 +76,7 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
         final transactionId = _generateTransactionId(
           transactionDate,
           movementNumber,
-          amountValue.toString(),
+          amount.value.toString(),
           description,
         );
 
@@ -80,17 +85,11 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
             id: transactionId,
             type: TransactionType.default_,
             description: description,
-            amount: TransactionAmountRequired(
-              amount: amountValue.toInt(),
-              currency: currency,
-            ),
+            amount: amount,
             transactionDate: transactionDate,
             transactionTime: transactionTime,
             processingDate: processingDate,
-            originalAmount: TransactionAmountOptional(
-              amount: amountValue.toInt(),
-              currency: currency,
-            ),
+            originalAmount: amount,
             city: null,
             country: null,
           ),
