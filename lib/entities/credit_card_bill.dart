@@ -1,6 +1,6 @@
-import 'package:pan_scrapper/models/credit_card_bill_summary.dart';
-import 'package:pan_scrapper/models/currency_type.dart';
-import 'package:pan_scrapper/models/transaction.dart';
+import 'package:pan_scrapper/entities/credit_card_bill_summary.dart';
+import 'package:pan_scrapper/entities/currency_type.dart';
+import 'package:pan_scrapper/entities/transaction.dart';
 
 class CreditCardBill {
   final String periodId;

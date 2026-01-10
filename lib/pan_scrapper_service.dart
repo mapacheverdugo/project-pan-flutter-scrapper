@@ -1,13 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/webview/webview.dart';
 
 import 'services/index.dart';
 
 class PanScrapperService {
-  final Institution institution;
+  final InstitutionCode institutionCode;
   final BuildContext context;
   final bool headless;
 
@@ -16,31 +17,31 @@ class PanScrapperService {
 
   PanScrapperService({
     required this.context,
-    required this.institution,
+    required this.institutionCode,
     this.headless = true,
   }) {
     _dio = Dio();
 
-    switch (institution) {
-      case Institution.bci:
+    switch (institutionCode) {
+      case InstitutionCode.clBciPersonas:
         _client = ClBciPersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.santander:
+      case InstitutionCode.clSantanderPersonas:
         _client = ClSantanderPersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.scotiabank:
+      case InstitutionCode.clScotiabankPersonas:
         _client = ClScotiabankPersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.bancoChile:
+      case InstitutionCode.clBancoChilePersonas:
         _client = ClBancoChilePersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.itau:
+      case InstitutionCode.clItauPersonas:
         _client = ClItauPersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.bancoFalabella:
+      case InstitutionCode.clBancoFalabellaPersonas:
         _client = ClBancoFalabellaPersonasConnectionService(_dio, _getWebview);
         break;
-      case Institution.bancoEstado:
+      case InstitutionCode.clBancoEstadoPersonas:
         _client = ClBancoEstadoPersonasConnectionService(_dio, _getWebview);
         break;
       default:
@@ -57,12 +58,7 @@ class PanScrapperService {
   }
 
   static Future<List<Institution>> getAvailableInstitutions() async {
-    return [
-      Institution.santander,
-      Institution.itau,
-      Institution.scotiabank,
-      Institution.bancoChile,
-    ];
+    return [];
   }
 
   Future<String> auth(String username, String password) async {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/constants/strings.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/institution_avatar.dart';
@@ -9,12 +9,11 @@ import 'package:pan_scrapper/presentation/widgets/rut_form_field.dart';
 class ConnectionInstitutionLoginView extends StatefulWidget {
   const ConnectionInstitutionLoginView({
     super.key,
-    required this.institution,
+
     required this.onLoginPressed,
     required this.onResetPasswordPressed,
   });
 
-  final Institution institution;
   final void Function(BuildContext context, String username, String password)
   onLoginPressed;
   final void Function(BuildContext context) onResetPasswordPressed;
@@ -33,7 +32,9 @@ class _ConnectionInstitutionLoginViewState
   Widget build(BuildContext context) {
     final connectionNotifier = ConnectionProvider.of(context);
     final isLoading = connectionNotifier.value.isLoading;
-    final institutionName = widget.institution.name;
+    final institution = connectionNotifier.value.selectedInstitution;
+    final institutionName = institution?.name;
+    final clientName = connectionNotifier.value.linkIntent.clientName;
 
     return CustomScrollView(
       slivers: [
@@ -44,14 +45,16 @@ class _ConnectionInstitutionLoginViewState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: InstitutionAvatar(
-                    institution: widget.institution,
-                    width: 56,
-                    height: 56,
+                if (institution != null) ...[
+                  Center(
+                    child: InstitutionAvatar(
+                      institution: institution,
+                      width: 56,
+                      height: 56,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ],
                 // Title
                 Text(
                   'Inicia sesión en $institutionName',
@@ -63,7 +66,7 @@ class _ConnectionInstitutionLoginViewState
                 const SizedBox(height: 16),
                 // Instructions
                 Text(
-                  'Ingresa tus credenciales de $institutionName para conectar tu cuenta a Kane.',
+                  'Ingresa tus credenciales de $institutionName para conectar tu cuenta a $clientName.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -90,7 +93,7 @@ class _ConnectionInstitutionLoginViewState
                 const SizedBox(height: 16),
                 Spacer(),
                 Text(
-                  'Al proporcionar tus credenciales, permites que Kane Connect acceda a tus datos financieros y aceptas que Kane Connect o tu institución puedan enviarte un código de acceso por SMS según nuestros o sus términos de SMS.',
+                  'Al proporcionar tus credenciales, permites que $productName acceda a tus datos financieros y aceptas que $productName o tu institución puedan enviarte un código de acceso por SMS según nuestros o sus términos de SMS.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,

@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:currency_formatter/currency_formatter.dart';
-import 'package:pan_scrapper/models/currency.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 
 extension CurrencyFormatterExt on Currency {
   String format(double amount) {

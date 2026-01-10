@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/constants/strings.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/product_card.dart';
 
 class ConnectionSelectProductsView extends StatefulWidget {
-  const ConnectionSelectProductsView({super.key, required this.institution});
-
-  final Institution institution;
+  const ConnectionSelectProductsView({super.key});
 
   @override
   State<ConnectionSelectProductsView> createState() =>
@@ -24,7 +22,9 @@ class _ConnectionSelectProductsViewState
         final connectionNotifier = ConnectionProvider.of(context);
         final products = connectionNotifier.value.products;
         final selectedProductIds = connectionNotifier.value.selectedProductIds;
-        final institutionName = widget.institution.name;
+        final institution = connectionNotifier.value.selectedInstitution;
+        final institutionName = institution?.name;
+        final clientName = connectionNotifier.value.linkIntent.clientName;
 
         return CustomScrollView(
           slivers: [
@@ -42,7 +42,7 @@ class _ConnectionSelectProductsViewState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Kane Connect compartirá con Kane solamente la información de los productos de $institutionName que selecciones.',
+                    '$productName compartirá con $clientName solamente la información de los productos de $institutionName que selecciones.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),

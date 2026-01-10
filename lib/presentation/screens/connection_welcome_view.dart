@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/constants/strings.dart';
+import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/default_card.dart';
 
 class ConnectionWelcomeView extends StatefulWidget {
-  const ConnectionWelcomeView({
-    super.key,
-    required this.institution,
-    required this.onContinue,
-  });
+  const ConnectionWelcomeView({super.key, required this.onContinue});
 
-  final Institution? institution;
   final void Function(BuildContext context) onContinue;
 
   @override
@@ -20,6 +16,9 @@ class ConnectionWelcomeView extends StatefulWidget {
 class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
   @override
   Widget build(BuildContext context) {
+    final connectionNotifier = ConnectionProvider.of(context);
+    final clientName = connectionNotifier.value.linkIntent.clientName;
+
     return CustomScrollView(
       slivers: [
         SliverFillRemaining(
@@ -56,7 +55,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Kane usa Kane Connect para conectar tu cuenta',
+                '$clientName usa $productName para conectar tu cuenta',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
@@ -91,7 +90,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Miles de aplicaciones confían en Kane Connect para conectarse rápidamente a instituciones financieras',
+                                'Miles de aplicaciones confían en $productName para conectarse rápidamente a instituciones financieras',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -122,7 +121,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Kane Connect usa el mejor cifrado para ayudar a proteger tus datos',
+                                '$productName usa el mejor cifrado para ayudar a proteger tus datos',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -136,7 +135,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
               const SizedBox(height: 16),
               Spacer(),
               Text(
-                'Al continuar, aceptas la Política de Privacidad de Kane Connect y recibir actualizaciones',
+                'Al continuar, aceptas la Política de Privacidad de $productName y recibir actualizaciones',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,

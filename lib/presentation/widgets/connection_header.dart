@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/constants/strings.dart';
+import 'package:pan_scrapper/entities/institution.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/models/connection_step.dart';
 
@@ -55,7 +56,7 @@ class ConnectionHeader extends StatelessWidget implements PreferredSizeWidget {
                         opacity: _showTitle ? 1.0 : 0.0,
                         duration: const Duration(milliseconds: 0),
                         child: Text(
-                          'Kane Connect',
+                          productName,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(

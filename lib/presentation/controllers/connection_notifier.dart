@@ -1,31 +1,47 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
-import 'package:pan_scrapper/models/product.dart';
+import 'package:pan_scrapper/entities/institution.dart';
+import 'package:pan_scrapper/entities/institution_code.dart';
+import 'package:pan_scrapper/entities/link_intent.dart';
+import 'package:pan_scrapper/entities/product.dart';
 
 /// Immutable model representing the connection state
 class ConnectionState {
   final bool isLoading;
+  final List<Institution> institutions;
+  final LinkIntent linkIntent;
   final List<Product> products;
-  final Institution? institution;
+  final InstitutionCode? selectedInstitutionCode;
   final List<String> selectedProductIds;
 
+  Institution? get selectedInstitution => institutions.firstWhereOrNull(
+    (institution) => institution.code == selectedInstitutionCode,
+  );
+
   const ConnectionState({
+    required this.selectedInstitutionCode,
+    required this.institutions,
+    required this.linkIntent,
     this.isLoading = false,
     this.products = const [],
-    this.institution,
     this.selectedProductIds = const [],
   });
 
   ConnectionState copyWith({
     bool? isLoading,
     List<Product>? products,
-    Institution? institution,
+    List<Institution>? institutions,
+    InstitutionCode? selectedInstitutionCode,
+    LinkIntent? linkIntent,
     List<String>? selectedProductIds,
   }) {
     return ConnectionState(
       isLoading: isLoading ?? this.isLoading,
       products: products ?? this.products,
-      institution: institution ?? this.institution,
+      institutions: institutions ?? this.institutions,
+      selectedInstitutionCode:
+          selectedInstitutionCode ?? this.selectedInstitutionCode,
+      linkIntent: linkIntent ?? this.linkIntent,
       selectedProductIds: selectedProductIds ?? this.selectedProductIds,
     );
   }
@@ -36,13 +52,21 @@ class ConnectionState {
     return other is ConnectionState &&
         other.isLoading == isLoading &&
         other.products == products &&
-        other.institution == institution &&
+        other.institutions == institutions &&
+        other.selectedInstitutionCode == selectedInstitutionCode &&
+        other.linkIntent == linkIntent &&
         other.selectedProductIds == selectedProductIds;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(isLoading, products, institution, selectedProductIds);
+  int get hashCode => Object.hash(
+    isLoading,
+    products,
+    institutions,
+    selectedInstitutionCode,
+    linkIntent,
+    selectedProductIds,
+  );
 }
 
 /// Notifier that manages the connection state
@@ -66,7 +90,7 @@ class ConnectionNotifier extends ValueNotifier<ConnectionState> {
 
   /// Sets the institution
   void setInstitution(Institution institution) {
-    value = value.copyWith(institution: institution);
+    value = value.copyWith(institutions: [institution]);
   }
 
   /// Toggles the selection of a product
@@ -87,7 +111,11 @@ class ConnectionNotifier extends ValueNotifier<ConnectionState> {
 
   /// Clears the state (resets to initial state)
   void clear() {
-    value = const ConnectionState();
+    value = ConnectionState(
+      selectedInstitutionCode: null,
+      institutions: value.institutions,
+      linkIntent: value.linkIntent,
+    );
   }
 }
 

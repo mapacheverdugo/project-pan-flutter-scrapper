@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pan_scrapper/models/rut.dart';
+import 'package:pan_scrapper/entities/rut.dart';
 import 'package:validate_rut/validate_rut.dart';
 
 class RutFormField extends StatefulWidget {

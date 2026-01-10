@@ -4,7 +4,7 @@ import 'package:example/models/product_type_ext.dart';
 import 'package:example/screens/credit_card_details_screen.dart';
 import 'package:example/screens/product_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ProductCard extends StatelessWidget {

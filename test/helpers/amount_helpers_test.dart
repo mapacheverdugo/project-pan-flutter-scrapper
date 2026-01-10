@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pan_scrapper/helpers/amount_helpers.dart';
+import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 
 void main() {
   test(
@@ -7,7 +8,8 @@ void main() {
     () {
       final amount = Amount.parse(
         r'$5.000.000',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 1,
           thousandSeparator: '.',
           decimalSeparator: ',',
@@ -21,7 +23,8 @@ void main() {
   test(r'parse amount in USD with text "USD 5.364" to be equal to 536400', () {
     final amount = Amount.parse(
       r'USD 5.364',
-      AmountOptions(
+      Currency.usd,
+      options: AmountParseOptions(
         factor: 1,
         thousandSeparator: '.',
         decimalSeparator: ',',
@@ -36,7 +39,8 @@ void main() {
     () {
       final amount = Amount.parse(
         r'USD 4.936,21',
-        AmountOptions(
+        Currency.usd,
+        options: AmountParseOptions(
           factor: 1,
           thousandSeparator: '.',
           decimalSeparator: ',',
@@ -53,7 +57,8 @@ void main() {
     () {
       final amount = Amount.parse(
         r'000000000000000000',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 100,
           thousandSeparator: null,
           decimalSeparator: null,
@@ -70,7 +75,8 @@ void main() {
     () {
       final amount = Amount.parse(
         r'000000000000924600',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 100,
           thousandSeparator: null,
           decimalSeparator: null,
@@ -87,7 +93,8 @@ void main() {
     () {
       final amount = Amount.parse(
         '00000000924600-',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 100,
           thousandSeparator: null,
           decimalSeparator: null,
@@ -104,7 +111,8 @@ void main() {
     () {
       final amount = Amount.parse(
         '000000003508000',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 100,
           thousandSeparator: null,
           decimalSeparator: null,
@@ -120,7 +128,8 @@ void main() {
     () {
       final amount = Amount.parse(
         '000000003508000+',
-        AmountOptions(
+        Currency.clp,
+        options: AmountParseOptions(
           factor: 100,
           thousandSeparator: null,
           decimalSeparator: null,

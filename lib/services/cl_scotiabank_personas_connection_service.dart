@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/services/mappers/cl_scotiabank_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/models/cl_scotiabank_personas/card_details_response_model.dart';

@@ -1,6 +1,8 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/entities/institution.dart';
+import 'package:pan_scrapper/entities/institution_code.dart';
+import 'package:pan_scrapper/entities/link_intent.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/models/connection_step.dart';
@@ -45,13 +47,17 @@ class ConnectionStepLayout extends StatelessWidget {
 }
 
 class ConnectionFlowScreen extends StatefulWidget {
-  final Institution selectedInstitution;
+  final InstitutionCode selectedInstitutionCode;
+  final LinkIntent linkIntent;
+  final List<Institution> institutions;
   final Function(String)? onSuccess;
   final Function(String)? onError;
 
   const ConnectionFlowScreen({
     super.key,
-    required this.selectedInstitution,
+    required this.selectedInstitutionCode,
+    required this.linkIntent,
+    required this.institutions,
     this.onSuccess,
     this.onError,
   });
@@ -67,7 +73,11 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
   void initState() {
     super.initState();
     _connectionNotifier = ConnectionNotifier(
-      ConnectionState(institution: widget.selectedInstitution),
+      ConnectionState(
+        selectedInstitutionCode: widget.selectedInstitutionCode,
+        institutions: widget.institutions,
+        linkIntent: widget.linkIntent,
+      ),
     );
   }
 
@@ -95,7 +105,6 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
                   screen = ConnectionStepLayout(
                     step: ConnectionStep.welcome,
                     child: ConnectionWelcomeView(
-                      institution: widget.selectedInstitution,
                       onContinue: (context) {
                         Navigator.of(context).pushNamed('/login');
                       },
@@ -107,9 +116,13 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
                   screen = ConnectionStepLayout(
                     step: ConnectionStep.login,
                     child: ConnectionInstitutionLoginView(
-                      institution: widget.selectedInstitution,
                       onLoginPressed: (context, username, password) {
-                        _login(context, username, password);
+                        _login(
+                          context,
+                          widget.selectedInstitutionCode,
+                          username,
+                          password,
+                        );
                       },
                       onResetPasswordPressed: (context) {
                         Navigator.of(context).pushNamed('/reset-password');
@@ -120,9 +133,7 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
                 case '/products':
                   screen = ConnectionStepLayout(
                     step: ConnectionStep.products,
-                    child: ConnectionSelectProductsView(
-                      institution: widget.selectedInstitution,
-                    ),
+                    child: ConnectionSelectProductsView(),
                   );
                   break;
 
@@ -155,6 +166,7 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
 
   Future<void> _login(
     BuildContext context,
+    InstitutionCode institutionCode,
     String username,
     String password,
   ) async {
@@ -163,12 +175,12 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
 
       final credentials = await PanScrapperService(
         context: context,
-        institution: widget.selectedInstitution,
+        institutionCode: institutionCode,
       ).auth(username, password);
 
       final products = await PanScrapperService(
         context: context,
-        institution: widget.selectedInstitution,
+        institutionCode: institutionCode,
       ).getProducts(credentials);
 
       _connectionNotifier.setProducts(products);

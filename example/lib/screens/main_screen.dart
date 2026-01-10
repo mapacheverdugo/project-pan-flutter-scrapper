@@ -1,9 +1,8 @@
 import 'package:example/models/access_credentials.dart';
-import 'package:example/models/institution_ext.dart';
 import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/screens/login_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/pan_connect.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
@@ -15,6 +14,16 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  final TextEditingController _publicKeyController = TextEditingController();
+  final TextEditingController _linkTokenController = TextEditingController();
+
+  @override
+  void dispose() {
+    _publicKeyController.dispose();
+    _linkTokenController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -24,29 +33,67 @@ class _MainScreenState extends State<MainScreen> {
         child: SafeArea(
           child: Column(
             children: <Widget>[
+              TextField(
+                controller: _publicKeyController,
+                decoration: InputDecoration(
+                  labelText: 'Public Key',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter your public key',
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _linkTokenController,
+                decoration: InputDecoration(
+                  labelText: 'Link Token',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter your link token',
+                ),
+              ),
+              SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
+                  final publicKey = _publicKeyController.text.trim();
+                  final linkToken = _linkTokenController.text.trim();
+
+                  if (publicKey.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Public Key is required')),
+                    );
+                    return;
+                  }
+
+                  if (linkToken.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Link Token is required')),
+                    );
+                    return;
+                  }
+
                   await PanConnect.launch(
                     context,
-                    selectedInstitution: Institution.santander,
+                    publicKey,
+                    linkToken,
+                    selectedInstitutionCode:
+                        InstitutionCode.clSantanderPersonas,
                   );
                 },
                 child: Text('Launch'),
               ),
               ListView.builder(
                 shrinkWrap: true,
-                itemCount: Institution.values.length,
+                itemCount: InstitutionCode.values.length,
                 itemBuilder: (context, index) {
                   return GestureDetector(
                     child: Card(
                       child: ListTile(
-                        title: Text(Institution.values[index].label),
+                        title: Text(InstitutionCode.values[index].name),
                       ),
                     ),
                     onTap: () async {
                       final service = PanScrapperService(
                         context: context,
-                        institution: Institution.values[index],
+                        institutionCode: InstitutionCode.values[index],
                         headless: false,
                       );
 

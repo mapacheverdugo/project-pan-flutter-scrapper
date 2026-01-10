@@ -1,9 +1,8 @@
 import 'package:example/models/access_credentials.dart';
-import 'package:example/models/institution_ext.dart';
 import 'package:example/widget/code_block.dart';
 import 'package:example/widget/product_card.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ConnectionDetailsScreen extends StatefulWidget {
@@ -30,7 +29,7 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${widget.credentials.username} - ${widget.service.institution.label}',
+          '${widget.credentials.username} - ${widget.service.institutionCode.name}',
         ),
       ),
       body: SingleChildScrollView(

@@ -2,8 +2,8 @@ import 'dart:developer';
 
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
-import 'package:pan_scrapper/models/currency.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/index.dart';
 
 class ClItauPersonasCreditCardMapper {
   static List<Product> parseCreditCard(String html) {

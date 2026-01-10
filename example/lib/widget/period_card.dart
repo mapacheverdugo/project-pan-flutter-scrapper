@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/credit_card_bill_period.dart';
+import 'package:pan_scrapper/entities/credit_card_bill_period.dart';
 
 class PeriodCard extends StatelessWidget {
   final CreditCardBillPeriod period;

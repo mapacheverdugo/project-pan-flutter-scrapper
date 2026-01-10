@@ -1,5 +1,5 @@
-import 'package:pan_scrapper/models/amount.dart';
-import 'package:pan_scrapper/models/currency.dart';
+import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 
 class CreditBalance {
   final Amount creditLimitAmount;

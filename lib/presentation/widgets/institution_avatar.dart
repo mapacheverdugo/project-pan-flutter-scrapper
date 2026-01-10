@@ -1,6 +1,6 @@
 import 'package:cached_network_svg_image/cached_network_svg_image.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/models/institution.dart';
+import 'package:pan_scrapper/entities/institution.dart';
 
 class InstitutionAvatar extends StatelessWidget {
   const InstitutionAvatar._({
@@ -44,7 +44,7 @@ class InstitutionAvatar extends StatelessWidget {
 
   String? get iconUrl => institution != null
       ? switch (institution!.suggestedIconOnMainColor) {
-          'iconPositive' => institution!.iconUrl ?? '',
+          'iconPositive' => institution!.iconPositiveUrl ?? '',
           'iconAlt' => institution!.iconAltUrl ?? '',
           _ => institution!.iconNegativeUrl,
         }

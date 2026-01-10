@@ -1,4 +1,5 @@
 import 'package:example/models/access_credentials.dart';
+import 'package:example/models/institution_code_ext.dart';
 import 'package:example/widget/rut_form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
@@ -27,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 Text(
-                  'Login ${widget.service.institution.name}',
+                  'Login ${widget.service.institutionCode.label}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 SizedBox(height: 10),

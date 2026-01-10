@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
 
 abstract class ConnectionService {
   Future<String> auth(String username, String password);

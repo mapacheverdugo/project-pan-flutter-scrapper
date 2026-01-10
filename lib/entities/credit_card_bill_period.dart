@@ -1,4 +1,4 @@
-import 'package:pan_scrapper/models/currency_type.dart';
+import 'package:pan_scrapper/entities/currency_type.dart';
 
 class CreditCardBillPeriod {
   final String id;

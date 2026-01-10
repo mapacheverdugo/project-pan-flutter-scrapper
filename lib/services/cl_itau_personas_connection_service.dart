@@ -9,7 +9,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart'
     hide CookieManager;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
-import 'package:pan_scrapper/models/index.dart';
+import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection_service.dart';
 import 'package:pan_scrapper/services/mappers/cl_itau_personas/credit_card_mapper.dart';
 import 'package:pan_scrapper/services/mappers/cl_itau_personas/product_mapper.dart';

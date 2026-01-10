@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/currency.dart';
-import 'package:pan_scrapper/models/index.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {

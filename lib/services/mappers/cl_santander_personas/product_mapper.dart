@@ -1,11 +1,11 @@
 import 'package:collection/collection.dart';
+import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
+import 'package:pan_scrapper/entities/credit_balance.dart';
+import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/product.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/amount.dart';
-import 'package:pan_scrapper/models/card_brand.dart';
-import 'package:pan_scrapper/models/credit_balance.dart';
-import 'package:pan_scrapper/models/currency.dart';
-import 'package:pan_scrapper/models/product.dart';
-import 'package:pan_scrapper/models/product_type.dart';
 import 'package:pan_scrapper/services/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasProductMapper {
