@@ -6,7 +6,7 @@ import 'package:pan_scrapper/presentation/widgets/default_card.dart';
 class ProductCard extends StatelessWidget {
   final ExtractedProductModel product;
   final bool isSelected;
-  final Function({required bool isSelected}) onSelected;
+  final Function({required bool isSelected})? onSelected;
 
   const ProductCard({
     super.key,
@@ -52,9 +52,12 @@ class ProductCard extends StatelessWidget {
     return DefaultCard(
       backgroundColor: Theme.of(context).colorScheme.surface,
       borderColor: isSelected ? Theme.of(context).colorScheme.primary : null,
-      onTap: () {
-        onSelected(isSelected: !isSelected);
-      },
+      onTap: onSelected != null
+          ? () {
+              onSelected!(isSelected: !isSelected);
+            }
+          : null,
+
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -62,9 +65,11 @@ class ProductCard extends StatelessWidget {
             Checkbox(
               value: isSelected,
 
-              onChanged: (value) {
-                onSelected(isSelected: !isSelected);
-              },
+              onChanged: onSelected != null
+                  ? (value) {
+                      onSelected!(isSelected: !isSelected);
+                    }
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(

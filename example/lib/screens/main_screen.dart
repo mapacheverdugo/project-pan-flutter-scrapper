@@ -1,5 +1,8 @@
+import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/widget/local_connections.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/pan_connect.dart';
 
 class MainScreen extends StatefulWidget {
@@ -12,9 +15,81 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final TextEditingController _publicKeyController = TextEditingController();
   final TextEditingController _linkTokenController = TextEditingController();
+  static const _storage = FlutterSecureStorage();
+  static const _publicKeyStorageKey = 'public_key';
+
+  @override
+  void initState() {
+    super.initState();
+    _publicKeyController.addListener(_onPublicKeyChanged);
+    _loadPublicKey();
+  }
+
+  void _onPublicKeyChanged() {
+    setState(() {});
+  }
+
+  Future<void> _loadPublicKey() async {
+    final publicKey = await _storage.read(key: _publicKeyStorageKey);
+    if (publicKey != null && mounted) {
+      setState(() {
+        _publicKeyController.text = publicKey;
+      });
+    }
+  }
+
+  Future<void> _savePublicKey() async {
+    final publicKey = _publicKeyController.text.trim();
+    if (publicKey.isNotEmpty) {
+      await _storage.write(key: _publicKeyStorageKey, value: publicKey);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Public Key saved')));
+      }
+    }
+  }
+
+  Future<void> _clearPublicKey() async {
+    setState(() {
+      _publicKeyController.clear();
+    });
+    await _storage.delete(key: _publicKeyStorageKey);
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Public Key cleared')));
+    }
+  }
+
+  Future<void> _onConnectionTap(LocalConnection localConnection) async {
+    final publicKey = _publicKeyController.text.trim();
+    if (publicKey.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Public Key is required')));
+      }
+      return;
+    }
+    await _storage.write(key: _publicKeyStorageKey, value: publicKey);
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConnectionDetailsScreen(
+            connection: localConnection,
+            publicKey: publicKey,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
+    _publicKeyController.removeListener(_onPublicKeyChanged);
     _publicKeyController.dispose();
     _linkTokenController.dispose();
     super.dispose();
@@ -29,13 +104,31 @@ class _MainScreenState extends State<MainScreen> {
         child: SafeArea(
           child: Column(
             children: <Widget>[
-              TextField(
-                controller: _publicKeyController,
-                decoration: InputDecoration(
-                  labelText: 'Public Key',
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter your public key',
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _publicKeyController,
+                      decoration: InputDecoration(
+                        labelText: 'Public Key',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter your public key',
+                        suffixIcon: _publicKeyController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: _clearPublicKey,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.save),
+                    onPressed: _savePublicKey,
+                    tooltip: 'Save Public Key',
+                  ),
+                ],
               ),
               SizedBox(height: 16),
               TextField(
@@ -70,7 +163,7 @@ class _MainScreenState extends State<MainScreen> {
                 },
                 child: Text('Launch'),
               ),
-              const LocalConnections(),
+              LocalConnections(onConnectionTap: _onConnectionTap),
             ],
           ),
         ),

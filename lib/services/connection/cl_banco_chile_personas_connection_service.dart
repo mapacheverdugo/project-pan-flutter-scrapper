@@ -6,7 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/index.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
@@ -193,7 +195,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
     String cookiesString,
   ) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
+      final response = await _dio.get<dynamic>(
         'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/selectorproductos/selectorProductos/obtenerProductos?incluirTarjetas=true',
         options: Options(
           headers: {
@@ -205,15 +207,15 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         ),
       );
 
+      await _checkDioResponse(response);
+
+      log('BancoChile raw products response: ${response.data}');
+
       return ClBancoChilePersonasProductsResponseModel.fromJson(
         response.data ?? {},
       );
     } on DioException catch (e) {
-      if (e.response?.statusCode != null &&
-          e.response!.statusCode! >= 300 &&
-          e.response!.statusCode! < 400) {
-        throw Exception('Session corrupted - needs reauth');
-      }
+      await _checkDioException(e);
       log('Error fetching BancoChile raw products: $e');
       rethrow;
     }
@@ -286,9 +288,162 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError(
-      'BancoChile depositary account transactions not implemented',
-    );
+    try {
+      final rawProducts = await _getRawProducts(credentials);
+      final rawProductId =
+          productId; // BancoChile productId is just the account ID
+
+      final account = rawProducts.productos.firstWhere(
+        (product) => product.id == rawProductId,
+        orElse: () => throw Exception('Account not found'),
+      );
+
+      // Get movement configuration to determine available date range
+      final config = await _getMovementConfigWithAccountInfo(
+        credentials,
+        rawProducts,
+        account,
+      );
+
+      final useDates = account.codigo != 'LCD';
+
+      // Use the configuration date range - convert milliseconds to ISO strings
+      final startDate = useDates
+          ? DateTime.fromMillisecondsSinceEpoch(
+              config.fechaDesde ?? 0,
+            ).toIso8601String()
+          : null;
+      final endDate = useDates
+          ? DateTime.fromMillisecondsSinceEpoch(
+              config.fechaHasta ?? 0,
+            ).toIso8601String()
+          : null;
+
+      return await _getDepositaryAccountTransactionsByDate(
+        credentials,
+        rawProducts.nombre ?? '',
+        rawProducts.rut ?? '',
+        account,
+        startDate,
+        endDate,
+      );
+    } catch (e) {
+      log('Error fetching BancoChile depositary account transactions: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets movement configuration with account info
+  Future<ClBancoChilePersonasConfigConsultaMovimientosModel>
+  _getMovementConfigWithAccountInfo(
+    String cookiesString,
+    ClBancoChilePersonasProductsResponseModel rawProducts,
+    ClBancoChilePersonasProducto account,
+  ) async {
+    try {
+      final requestBody = {
+        'cuentasSeleccionadas': [
+          {
+            'nombreCliente': rawProducts.nombre,
+            'rutCliente': rawProducts.rut,
+            'numero': account.numero,
+            'mascara': account.mascara,
+            'selected': true,
+            'codigoProducto': account.codigo,
+            'claseCuenta': account.claseCuenta,
+            'moneda': account.codigoMoneda,
+          },
+        ],
+      };
+
+      final response = await _dio.post(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/movimientos/getConfigConsultaMovimientos',
+        data: requestBody,
+        options: Options(
+          headers: {
+            'Host': 'portalpersonas.bancochile.cl',
+            'Referer': 'https://portalpersonas.bancochile.cl/',
+            'Cookie': cookiesString,
+          },
+        ),
+      );
+
+      _checkDioResponse(response);
+
+      final responseData = response.data as Map<String, dynamic>?;
+      if (responseData == null) {
+        throw Exception('Empty response from movement config API');
+      }
+
+      return ClBancoChilePersonasConfigConsultaMovimientosModel.fromJson(
+        responseData,
+      );
+    } catch (e) {
+      log('Error fetching BancoChile movement config: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets depositary account transactions by date range
+  Future<List<ExtractedTransaction>> _getDepositaryAccountTransactionsByDate(
+    String cookiesString,
+    String nombreCliente,
+    String rutCliente,
+    ClBancoChilePersonasProducto account,
+    String? startDate,
+    String? endDate,
+  ) async {
+    try {
+      final requestBody = {
+        'cuentaSeleccionada': {
+          'nombreCliente': nombreCliente,
+          'rutCliente': rutCliente,
+          'numero': account.numero,
+          'mascara': account.mascara,
+          'selected': true,
+          'codigoProducto': account.codigo,
+          'claseCuenta': account.claseCuenta,
+          'moneda': account.codigoMoneda,
+        },
+        'cabecera': {
+          'statusGenerico': true,
+          'paginacionDesde': 1,
+          'fechaInicio': startDate,
+          'fechaFin': endDate,
+        },
+      };
+
+      final response = await _dio.post(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/bff-pper-prd-cta-movimientos/movimientos/getCartola',
+        data: requestBody,
+        options: Options(
+          headers: {
+            'Host': 'portalpersonas.bancochile.cl',
+            'Referer': 'https://portalpersonas.bancochile.cl/',
+            'Cookie': cookiesString,
+          },
+        ),
+      );
+
+      _checkDioResponse(response);
+
+      final responseData = response.data;
+
+      final cartolaModel = ClBancoChilePersonasCartolaModel.fromJson(
+        responseData as Map<String, dynamic>,
+      );
+
+      return ClBancoChilePersonasDepositaryTransactionMapper.fromCartolaModel(
+        cartolaModel,
+      );
+    } on DioException catch (e) {
+      log(
+        'Error fetching BancoChile depositary account transactions by date: $e',
+      );
+      await _checkDioException(e);
+
+      rethrow;
+    }
   }
 
   @override
@@ -495,5 +650,24 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   ) {
     // TODO: implement getCreditCardUnbilledTransactions
     throw UnimplementedError();
+  }
+
+  Future<void> _checkDioResponse(Response<dynamic> response) async {
+    if (response.data == null) {
+      throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+    }
+    if (response.data is String && response.data.startsWith('<html>')) {
+      throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+    }
+  }
+
+  Future<void> _checkDioException(DioException exception) async {
+    if (exception.response?.statusCode != null &&
+            (exception.response!.statusCode! >= 300 &&
+                exception.response!.statusCode! < 400) ||
+        exception.response?.statusCode == 500) {
+      throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+    }
+    log('Error fetching BancoChile: $exception');
   }
 }

@@ -1,10 +1,11 @@
-import 'package:example/screens/connection_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/pan_connect.dart';
 
 class LocalConnections extends StatefulWidget {
-  const LocalConnections({super.key});
+  const LocalConnections({super.key, required this.onConnectionTap});
+
+  final void Function(LocalConnection) onConnectionTap;
 
   @override
   State<LocalConnections> createState() => _LocalConnectionsState();
@@ -38,15 +39,7 @@ class _LocalConnectionsState extends State<LocalConnections> {
             children: _localConnections
                 .map(
                   (e) => ListTile(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ConnectionDetailsScreen(connection: e),
-                        ),
-                      );
-                    },
+                    onTap: () => widget.onConnectionTap(e),
                     title: Text(e.institutionCode.name),
                     subtitle: Text(e.rawUsername),
                   ),

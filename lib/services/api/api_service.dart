@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:pan_scrapper/entities/extraction.dart';
 import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
 import 'package:pan_scrapper/models/execute_link_token_result_model.dart';
 import 'package:pan_scrapper/models/institution_model.dart';
@@ -16,6 +17,11 @@ abstract class ApiService {
   Future<ExecuteLinkTokenResultModel> executeLinkToken({
     required String linkToken,
     required ExtractedConnectionResultModel connectionResult,
+    required String publicKey,
+  });
+  Future<void> submitExtractions({
+    required List<Extraction> extractions,
+    required String connectionId,
     required String publicKey,
   });
 }
@@ -145,5 +151,37 @@ class ApiServiceImpl extends ApiService {
     }
 
     return ExecuteLinkTokenResultModel.fromJson(data);
+  }
+
+  @override
+  Future<void> submitExtractions({
+    required List<Extraction> extractions,
+    required String publicKey,
+    required String connectionId,
+  }) async {
+    final body = {
+      'extractions': extractions.map((e) => e.toJson()).toList(),
+      'connectionId': connectionId,
+    };
+
+    log('submitExtractions body: ${jsonEncode(body)}');
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_baseUrl/api/institution/extractions',
+      data: body,
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $publicKey',
+        },
+      ),
+    );
+
+    final data = response.data?['data'];
+    if (data == null) {
+      throw Exception('Empty response from submit extractions API');
+    }
+
+    return data;
   }
 }

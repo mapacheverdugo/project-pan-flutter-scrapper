@@ -23,7 +23,7 @@ class PanScrapperService {
   PanScrapperService({
     required this.context,
     required this.connection,
-    this.headless = true,
+    this.headless = false,
   }) {
     _storage = StorageServiceImpl();
 
@@ -37,7 +37,7 @@ class PanScrapperService {
   static ConnectionService _getClient({
     required InstitutionCode institutionCode,
     required BuildContext context,
-    bool headless = true,
+    bool headless = false,
   }) {
     final dio = Dio();
 
@@ -184,7 +184,8 @@ class PanScrapperService {
       final result = await function(credentials);
       return result;
     } on ConnectionException catch (e) {
-      if (e.type == ConnectionExceptionType.invalidAuthCredentials) {
+      if (e.type == ConnectionExceptionType.invalidAuthCredentials ||
+          e.type == ConnectionExceptionType.authCredentialsExpired) {
         log(
           'authenticatedWrapper ConnectionExceptionType.invalidAuthCredentials, re-authenticating',
         );

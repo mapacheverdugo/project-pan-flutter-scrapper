@@ -4,12 +4,18 @@ import 'package:example/widget/product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
+import 'package:pan_scrapper/pan_connect.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ConnectionDetailsScreen extends StatefulWidget {
-  const ConnectionDetailsScreen({super.key, required this.connection});
+  const ConnectionDetailsScreen({
+    super.key,
+    required this.connection,
+    required this.publicKey,
+  });
 
   final LocalConnection connection;
+  final String publicKey;
 
   @override
   State<ConnectionDetailsScreen> createState() =>
@@ -41,10 +47,27 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
             children: [
               ListTile(
                 title: Text(
-                  'Credentials',
+                  'Connection',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                title: Text(
+                  'Connection ID: ${widget.connection.id}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                contentPadding: EdgeInsets.zero,
+                trailing: ElevatedButton(
+                  onPressed: () {
+                    PanConnect.syncLocalConnection(
+                      context,
+                      widget.connection,
+                      widget.publicKey,
+                    );
+                  },
+                  child: Text('Sync'),
+                ),
               ),
               SizedBox(height: 10),
               ListTile(

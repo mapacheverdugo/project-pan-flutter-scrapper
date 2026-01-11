@@ -1,10 +1,17 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/entities/currency_type.dart';
+import 'package:pan_scrapper/entities/extraction.dart';
+import 'package:pan_scrapper/entities/extraction_operation.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
 import 'package:pan_scrapper/models/institution_model.dart';
 import 'package:pan_scrapper/models/link_intent_model.dart';
 import 'package:pan_scrapper/models/local_connection_model.dart';
+import 'package:pan_scrapper/pan_scrapper_service.dart';
 import 'package:pan_scrapper/presentation/screens/connection_screen.dart';
 import 'package:pan_scrapper/services/api/api_service.dart';
 import 'package:pan_scrapper/services/storage/storage_service.dart';
@@ -153,5 +160,100 @@ class PanConnect {
     return currentConnections.map((e) => e.toEntity()).toList();
   }
 
-  static Future<void> syncLocalConnection(LocalConnection connection) async {}
+  static Future<void> syncLocalConnection(
+    BuildContext context,
+    LocalConnection connection,
+    String publicKey,
+  ) async {
+    final dio = Dio();
+    final apiService = ApiServiceImpl(dio);
+    final panScrapperService = PanScrapperService(
+      context: context,
+      connection: connection,
+    );
+
+    final extractions = <Extraction>[];
+
+    final products = await panScrapperService.getProducts();
+    extractions.add(
+      Extraction(
+        payload: products.map((e) => e.toJson()).toList(),
+        params: null,
+        operation: ExtractionOperation.products,
+      ),
+    );
+
+    for (final product in products) {
+      try {
+        if (product.type == ProductType.depositaryAccount) {
+          final transactions = await panScrapperService
+              .getDepositaryAccountTransactions(product.providerId);
+          extractions.add(
+            Extraction(
+              payload: transactions.map((e) => e.toJson()).toList(),
+              params: {'productId': product.providerId},
+              operation: ExtractionOperation.depositaryAccountTransactions,
+            ),
+          );
+        }
+
+        if (product.type == ProductType.creditCard) {
+          final periods = await panScrapperService.getCreditCardBillPeriods(
+            product.providerId,
+          );
+          extractions.add(
+            Extraction(
+              payload: periods.map((e) => e.toJson()).toList(),
+              params: {'productId': product.providerId},
+              operation: ExtractionOperation.creditCardBillPeriods,
+            ),
+          );
+
+          final nationalUnbilledTransactions = await panScrapperService
+              .getCreditCardUnbilledTransactions(
+                product.providerId,
+                CurrencyType.national,
+              );
+          extractions.add(
+            Extraction(
+              payload: nationalUnbilledTransactions
+                  .map((e) => e.toJson())
+                  .toList(),
+              params: {
+                'productId': product.providerId,
+                'currencyType': CurrencyType.national.name,
+              },
+              operation: ExtractionOperation.creditCardUnbilledTransactions,
+            ),
+          );
+
+          final internationalUnbilledTransactions = await panScrapperService
+              .getCreditCardUnbilledTransactions(
+                product.providerId,
+                CurrencyType.international,
+              );
+          extractions.add(
+            Extraction(
+              payload: internationalUnbilledTransactions
+                  .map((e) => e.toJson())
+                  .toList(),
+              params: {
+                'productId': product.providerId,
+                'currencyType': CurrencyType.international.name,
+              },
+              operation: ExtractionOperation.creditCardUnbilledTransactions,
+            ),
+          );
+        }
+      } catch (e) {
+        log('Error extracting ${product.type} transactions: $e');
+      }
+    }
+
+    await apiService.submitExtractions(
+      extractions: extractions,
+      publicKey: publicKey,
+      connectionId: connection.id,
+    );
+  }
 }

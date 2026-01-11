@@ -27,6 +27,7 @@ class _ConnectionSelectProductsViewState
         final institution = connectionNotifier.value.selectedInstitution;
         final institutionName = institution?.name;
         final clientName = connectionNotifier.value.linkIntent.clientName;
+        final isLoading = connectionNotifier.value.isLoading;
 
         return CustomScrollView(
           slivers: [
@@ -59,23 +60,25 @@ class _ConnectionSelectProductsViewState
                         return ProductCard(
                           product: product,
                           isSelected: isSelected,
-                          onSelected: ({required bool isSelected}) {
-                            final currentSelected = List<String>.from(
-                              selectedProductIds,
-                            );
-                            if (isSelected) {
-                              if (!currentSelected.contains(
-                                product.providerId,
-                              )) {
-                                currentSelected.add(product.providerId);
-                              }
-                            } else {
-                              currentSelected.remove(product.providerId);
-                            }
-                            connectionNotifier.setSelectedProductIds(
-                              currentSelected,
-                            );
-                          },
+                          onSelected: !isLoading
+                              ? ({required bool isSelected}) {
+                                  final currentSelected = List<String>.from(
+                                    selectedProductIds,
+                                  );
+                                  if (isSelected) {
+                                    if (!currentSelected.contains(
+                                      product.providerId,
+                                    )) {
+                                      currentSelected.add(product.providerId);
+                                    }
+                                  } else {
+                                    currentSelected.remove(product.providerId);
+                                  }
+                                  connectionNotifier.setSelectedProductIds(
+                                    currentSelected,
+                                  );
+                                }
+                              : null,
                         );
                       }),
                     ],
@@ -86,6 +89,7 @@ class _ConnectionSelectProductsViewState
                     width: double.infinity,
                     child: DefaultButton(
                       text: 'Continuar',
+                      isLoading: isLoading,
                       size: DefaultButtonSize.lg,
                       onPressed: selectedProductIds.isNotEmpty
                           ? () {

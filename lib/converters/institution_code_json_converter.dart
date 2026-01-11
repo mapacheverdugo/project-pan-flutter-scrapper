@@ -20,6 +20,9 @@ class InstitutionCodeJsonConverter
         return InstitutionCode.clBancoEstadoPersonas;
       case "cl_banco_falabella_personas":
         return InstitutionCode.clBancoFalabellaPersonas;
+      case "cl_itau_personas":
+        return InstitutionCode.clItauPersonas;
+
       default:
         return InstitutionCode.unknown;
     }
