@@ -1,5 +1,0 @@
-enum TransactionCreditDebit {
-  credit,
-  debit,
-}
-

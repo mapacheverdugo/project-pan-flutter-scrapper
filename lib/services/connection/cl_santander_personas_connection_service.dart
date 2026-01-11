@@ -334,7 +334,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,
     String productId,
   ) async {
@@ -362,7 +362,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         productId,
       );
 
-      final transactions = <Transaction>[];
+      final transactions = <ExtractedTransaction>[];
 
       // Get raw products to find currency
       final rawProducts = await _getRawProducts(
@@ -565,7 +565,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
     String productId,
   ) async {
@@ -659,7 +659,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         return [];
       }
 
-      final periods = <CreditCardBillPeriod>[];
+      final periods = <ExtractedCreditCardBillPeriod>[];
       for (final period in matriz) {
         final periodMap = period as Map<String, dynamic>;
         final moneda = periodMap['MONEDA'] as String?;
@@ -671,18 +671,16 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         }
 
         // Convert ISO number to currency code
-        final currencyCode = _getCurrencyFromIsoNumber(
-          int.tryParse(moneda) ?? 0,
-        );
-        final currencyType = currencyCode == 'CLP'
+        final currencyCode = Currency.fromIsoNum(moneda);
+        final currencyType = currencyCode == Currency.clp
             ? CurrencyType.national
             : CurrencyType.international;
 
         final periodId = '${currencyType.name}_$numExt';
 
         periods.add(
-          CreditCardBillPeriod(
-            id: periodId,
+          ExtractedCreditCardBillPeriod(
+            providerId: periodId,
             startDate: fechaExt,
             endDate: null,
             currency: currencyCode,
@@ -698,22 +696,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     }
   }
 
-  String _getCurrencyFromIsoNumber(int isoNumber) {
-    // ISO 4217 currency codes
-    // 152 = CLP, 840 = USD
-    switch (isoNumber) {
-      case 152:
-        return 'CLP';
-      case 840:
-        return 'USD';
-      default:
-        return 'CLP'; // Default to CLP
-    }
-  }
-
   /// Gets credit card unbilled transactions for the given product and currency type
   @override
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String credentials,
     String productId,
     CurrencyType transactionType,
@@ -873,7 +858,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
       // Get period details to find startDate
       final periods = await getCreditCardBillPeriods(credentials, productId);
       final period = periods.firstWhere(
-        (p) => p.id == periodId,
+        (p) => p.providerId == periodId,
         orElse: () => throw Exception('Period not found'),
       );
 

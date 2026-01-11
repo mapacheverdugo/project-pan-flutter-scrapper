@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:pan_scrapper/models/connection/product_type.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 
 class ProductTypeJsonConverter extends JsonConverter<ProductType, String> {
   const ProductTypeJsonConverter();

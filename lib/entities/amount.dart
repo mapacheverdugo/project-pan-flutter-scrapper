@@ -1,5 +1,4 @@
 import 'package:pan_scrapper/entities/currency.dart';
-import 'package:pan_scrapper/entities/currency_ext.dart';
 
 class Amount {
   final Currency currency;

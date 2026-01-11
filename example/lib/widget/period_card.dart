@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/entities/credit_card_bill_period.dart';
+import 'package:pan_scrapper/entities/extracted_credit_card_bill_period.dart';
 
 class PeriodCard extends StatelessWidget {
-  final CreditCardBillPeriod period;
+  final ExtractedCreditCardBillPeriod period;
 
   const PeriodCard({super.key, required this.period});
 
@@ -15,7 +15,7 @@ class PeriodCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(width: double.infinity),
-            Text('ID: ${period.id}'),
+            Text('ID: ${period.providerId}'),
             Text(
               'Period: ${period.startDate}',
               style: Theme.of(context).textTheme.titleMedium,

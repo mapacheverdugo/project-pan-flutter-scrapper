@@ -1,11 +1,11 @@
 import 'package:collection/collection.dart';
 import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
 import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/connection/card_brand.dart';
 import 'package:pan_scrapper/models/connection/credit_balance.dart';
 import 'package:pan_scrapper/models/connection/product.dart';
-import 'package:pan_scrapper/models/connection/product_type.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasProductMapper {
@@ -187,9 +187,7 @@ class ClSantanderPersonasProductMapper {
             if (creditLimitAmount != null &&
                 creditLimitAmount.value != 0 &&
                 availableAmount != null &&
-                availableAmount.value != 0 &&
-                usedAmount != null &&
-                usedAmount.value != 0) {
+                usedAmount != null) {
               creditBalances.add(
                 ExtractedCreditBalance(
                   creditLimitAmount: creditLimitAmount.value,

@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:developer';
 
-import 'package:crypto/crypto.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
@@ -9,19 +7,7 @@ import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
-  /// Generates a unique transaction ID from transaction data
-  static String _generateTransactionId(
-    String transactionDate,
-    String importe,
-    String description,
-  ) {
-    final combined = '$transactionDate|$importe|$description';
-    final bytes = utf8.encode(combined);
-    final digest = sha256.convert(bytes);
-    return digest.toString().substring(0, 16);
-  }
-
-  static List<Transaction> fromResponseModel(
+  static List<ExtractedTransaction> fromResponseModel(
     ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosResponseModel
     model,
     CurrencyType transactionType,
@@ -35,7 +21,7 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
     final currency = transactionType == CurrencyType.national
         ? Currency.clp
         : Currency.usd;
-    final transactions = <Transaction>[];
+    final transactions = <ExtractedTransaction>[];
 
     for (final movimiento in matriz) {
       try {
@@ -98,21 +84,8 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
         // Get city
         final ciudad = nullIfEmpty(movimiento.ciudad);
 
-        // Generate transaction ID
-        final transactionId = _generateTransactionId(
-          transactionDate,
-          importe,
-          description,
-        );
-
-        log(
-          'TarjetasDeCreditoConsultaUltimosMovimientosMapper transactionId: $transactionId',
-        );
-
         transactions.add(
-          Transaction(
-            id: transactionId,
-            type: TransactionType.default_,
+          ExtractedTransaction(
             description: description,
             amount: amount,
             billingCurrencyType: transactionType,

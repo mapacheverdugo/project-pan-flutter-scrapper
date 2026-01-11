@@ -1,11 +1,11 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pan_scrapper/converters/amount_json_converter.dart';
+import 'package:pan_scrapper/converters/card_brand_json_converter.dart';
+import 'package:pan_scrapper/converters/product_type_json_converter.dart';
 import 'package:pan_scrapper/entities/amount.dart';
-import 'package:pan_scrapper/models/connection/amount_json_converter.dart';
-import 'package:pan_scrapper/models/connection/card_brand.dart';
-import 'package:pan_scrapper/models/connection/card_brand_json_converter.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/models/connection/credit_balance.dart';
-import 'package:pan_scrapper/models/connection/product_type.dart';
-import 'package:pan_scrapper/models/connection/product_type_json_converter.dart';
 
 part 'product.g.dart';
 

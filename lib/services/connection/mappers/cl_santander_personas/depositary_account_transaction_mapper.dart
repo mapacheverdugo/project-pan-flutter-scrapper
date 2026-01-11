@@ -1,37 +1,10 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasDepositaryAccountTransactionMapper {
-  /// Parses a number string that may have a symbol (+ or -) at the end
-  static double _parseNumberWithSymbolAtEnd(String text) {
-    final symbolAtTheEnd = text.endsWith('+') || text.endsWith('-');
-    final numberText = symbolAtTheEnd
-        ? text.substring(0, text.length - 1)
-        : text;
-    final symbolText = symbolAtTheEnd ? text.substring(text.length - 1) : '';
-    final parsedNumber = double.tryParse(numberText) ?? 0.0;
-    return symbolText == '-' ? -parsedNumber : parsedNumber;
-  }
-
-  /// Generates a unique transaction ID from transaction data
-  static String _generateTransactionId(
-    String transactionDate,
-    String movementNumber,
-    String amount,
-    String description,
-  ) {
-    final combined = '$transactionDate|$movementNumber|$amount|$description';
-    final bytes = utf8.encode(combined);
-    final digest = sha256.convert(bytes);
-    return digest.toString().substring(0, 16);
-  }
-
-  static List<Transaction> fromResponseModel(
+  static List<ExtractedTransaction> fromResponseModel(
     ClSantanderPersonasDepositaryAccountTransactionResponseModel model,
     Currency productCurrency,
   ) {
@@ -39,10 +12,7 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
       return [];
     }
 
-    final currency =
-        Currency.tryFromIsoLetters(model.repositioningExit?.divisa) ??
-        productCurrency;
-    final transactions = <Transaction>[];
+    final transactions = <ExtractedTransaction>[];
 
     for (final movement in model.movements) {
       try {
@@ -63,7 +33,7 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
 
         final amount = Amount.tryParse(
           movementAmount,
-          Currency.clp,
+          productCurrency,
           options: AmountParseOptions(factor: 100),
         );
 
@@ -71,19 +41,8 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
           continue; // Skip transactions without amount
         }
 
-        // Generate transaction ID
-        final movementNumber = movement.movementNumber ?? '';
-        final transactionId = _generateTransactionId(
-          transactionDate,
-          movementNumber,
-          amount.value.toString(),
-          description,
-        );
-
         transactions.add(
-          Transaction(
-            id: transactionId,
-            type: TransactionType.default_,
+          ExtractedTransaction(
             description: description,
             amount: amount,
             transactionDate: transactionDate,

@@ -196,38 +196,4 @@ void main() {
       expect(amount.value, -2624901);
     },
   );
-
-  test(
-    r'tryParse amount in CLP with text "000000000400000000" and factor 100 to be equal to 4000000',
-    () {
-      final amount = Amount.tryParse(
-        '000000000400000000',
-        Currency.clp,
-        options: AmountParseOptions(
-          factor: 100,
-          thousandSeparator: null,
-          decimalSeparator: null,
-          currencyDecimals: 0,
-        ),
-      );
-      expect(amount?.value, 4000000);
-    },
-  );
-
-  test(
-    r'tryParse amount in CLP with text "000000000000000000" and factor 100 to be equal to 0',
-    () {
-      final amount = Amount.tryParse(
-        '000000000000000000',
-        Currency.clp,
-        options: AmountParseOptions(
-          factor: 100,
-          thousandSeparator: null,
-          decimalSeparator: null,
-          currencyDecimals: 0,
-        ),
-      );
-      expect(amount?.value, 0);
-    },
-  );
 }

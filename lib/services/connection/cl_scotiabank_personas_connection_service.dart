@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/product_mapper.dart';
@@ -310,7 +311,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,
     String productId,
   ) async {
@@ -320,7 +321,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
     String productId,
   ) async {
@@ -345,7 +346,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
         cardId,
       );
 
-      final periods = <CreditCardBillPeriod>[];
+      final periods = <ExtractedCreditCardBillPeriod>[];
       final lstConsulta =
           billPeriodDetail['lstConsultaEstadoVisaEnc'] as Map<String, dynamic>?;
       if (lstConsulta != null) {
@@ -364,8 +365,8 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
               ? CurrencyType.international
               : CurrencyType.national;
           final currency = currencyType == CurrencyType.international
-              ? 'USD'
-              : 'CLP';
+              ? Currency.usd
+              : Currency.clp;
 
           // Parse DDMMYYYY to YYYY-MM-DD
           final startDate = _parseScotiabankDate(billingDate);
@@ -376,8 +377,8 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
           final periodId = '$cardId|$billingDate|${currencyType.name}';
 
           periods.add(
-            CreditCardBillPeriod(
-              id: periodId,
+            ExtractedCreditCardBillPeriod(
+              providerId: periodId,
               startDate: startDate,
               endDate: endDate,
               currency: currency,
@@ -580,7 +581,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String credentials,
     String productId,
     CurrencyType transactionType,

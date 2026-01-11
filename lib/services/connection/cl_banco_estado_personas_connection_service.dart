@@ -97,7 +97,7 @@ class ClBancoEstadoPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,
     String productId,
   ) async {
@@ -107,7 +107,7 @@ class ClBancoEstadoPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
     String productId,
   ) async {
@@ -137,7 +137,7 @@ class ClBancoEstadoPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String credentials,
     String productId,
     CurrencyType transactionType,

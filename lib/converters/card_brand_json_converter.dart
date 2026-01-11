@@ -1,8 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:pan_scrapper/models/connection/card_brand.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
 
-class CardBrandJsonConverter
-    extends JsonConverter<CardBrand, String> {
+class CardBrandJsonConverter extends JsonConverter<CardBrand, String> {
   const CardBrandJsonConverter();
 
   @override

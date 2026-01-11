@@ -1,8 +1,8 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pan_scrapper/converters/amount_json_converter.dart';
+import 'package:pan_scrapper/converters/currency_json_converter.dart';
 import 'package:pan_scrapper/entities/amount.dart';
 import 'package:pan_scrapper/entities/currency.dart';
-import 'package:pan_scrapper/models/connection/amount_json_converter.dart';
-import 'package:pan_scrapper/models/connection/currency_json_converter.dart';
 
 part 'credit_balance.g.dart';
 

@@ -44,7 +44,7 @@ Map<String, dynamic> _$ExtractedProductModelToJson(
     instance.availableAmount,
     const AmountJsonConverter().toJson,
   ),
-  'creditBalances': instance.creditBalances,
+  'creditBalances': instance.creditBalances?.map((e) => e.toJson()).toList(),
   'metadata': instance.metadata,
 };
 

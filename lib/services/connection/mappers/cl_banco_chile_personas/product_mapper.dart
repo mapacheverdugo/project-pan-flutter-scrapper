@@ -1,9 +1,9 @@
 import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
 import 'package:pan_scrapper/entities/currency.dart';
-import 'package:pan_scrapper/models/connection/card_brand.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/models/connection/credit_balance.dart';
 import 'package:pan_scrapper/models/connection/product.dart';
-import 'package:pan_scrapper/models/connection/product_type.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/index.dart';
 
 class ClBancoChilePersonasProductMapper {

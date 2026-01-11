@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/product_mapper.dart';
@@ -281,7 +282,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,
     String productId,
   ) async {
@@ -291,7 +292,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
     String productId,
   ) async {
@@ -338,7 +339,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
       final listaInternacional =
           responseData['listaInternacional'] as List<dynamic>? ?? [];
 
-      final periods = <CreditCardBillPeriod>[];
+      final periods = <ExtractedCreditCardBillPeriod>[];
 
       // Map national periods
       for (final period in listaNacional) {
@@ -349,11 +350,11 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         final periodId = '${CurrencyType.national.name}_$fechaFacturacion';
 
         periods.add(
-          CreditCardBillPeriod(
-            id: periodId,
+          ExtractedCreditCardBillPeriod(
+            providerId: periodId,
             startDate: fechaFacturacion,
             endDate: null,
-            currency: 'CLP',
+            currency: Currency.clp,
             currencyType: CurrencyType.national,
           ),
         );
@@ -368,11 +369,11 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         final periodId = '${CurrencyType.international.name}_$fechaFacturacion';
 
         periods.add(
-          CreditCardBillPeriod(
-            id: periodId,
+          ExtractedCreditCardBillPeriod(
+            providerId: periodId,
             startDate: fechaFacturacion,
             endDate: null,
-            currency: 'USD',
+            currency: Currency.usd,
             currencyType: CurrencyType.international,
           ),
         );
@@ -487,7 +488,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String credentials,
     String productId,
     CurrencyType transactionType,

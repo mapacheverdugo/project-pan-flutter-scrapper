@@ -1,10 +1,10 @@
 import 'package:pan_scrapper/entities/amount.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
 import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/helpers/string_helpers.dart';
-import 'package:pan_scrapper/models/connection/card_brand.dart';
 import 'package:pan_scrapper/models/connection/credit_balance.dart';
 import 'package:pan_scrapper/models/connection/product.dart';
-import 'package:pan_scrapper/models/connection/product_type.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_with_details_model.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/index.dart';
 

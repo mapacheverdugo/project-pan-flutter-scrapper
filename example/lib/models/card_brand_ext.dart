@@ -1,4 +1,4 @@
-import 'package:pan_scrapper/models/connection/card_brand.dart';
+import 'package:pan_scrapper/entities/card_brand.dart';
 
 extension CardBrandExtension on CardBrand {
   String get label {

@@ -1,7 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pan_scrapper/converters/institution_code_json_converter.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/models/connection/product.dart';
-import 'package:pan_scrapper/models/institution_code_json_converter.dart';
 
 part 'extracted_connection_result_model.g.dart';
 

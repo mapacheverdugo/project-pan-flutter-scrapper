@@ -1,12 +1,12 @@
 import 'package:pan_scrapper/entities/credit_card_bill_summary.dart';
 import 'package:pan_scrapper/entities/currency_type.dart';
-import 'package:pan_scrapper/entities/transaction.dart';
+import 'package:pan_scrapper/entities/extracted_transaction.dart';
 
 class CreditCardBill {
   final String periodId;
   final CurrencyType currencyType;
   final CreditCardBillSummary summary;
-  final List<Transaction> transactions;
+  final List<ExtractedTransaction> transactions;
 
   CreditCardBill({
     required this.periodId,
@@ -24,4 +24,3 @@ class CreditCardBill {
     };
   }
 }
-

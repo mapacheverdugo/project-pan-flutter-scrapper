@@ -1,5 +1,3 @@
-import 'package:example/models/card_brand_ext.dart';
-import 'package:example/models/product_type_ext.dart';
 import 'package:example/widget/period_card.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
@@ -19,8 +17,8 @@ class ProductDetailsScreen extends StatefulWidget {
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
-  List<Transaction> _transactions = [];
-  List<CreditCardBillPeriod> _periods = [];
+  List<ExtractedTransaction> _transactions = [];
+  List<ExtractedCreditCardBillPeriod> _periods = [];
   bool _isLoadingTransactions = false;
   bool _isLoadingPeriods = false;
 
@@ -94,7 +92,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 Text(
                                   'Date: ${_transactions[index].transactionDate}',
                                 ),
-                              Text('Type: ${_transactions[index].type.name}'),
                             ],
                           ),
                         ),
@@ -153,8 +150,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         _buildTableRow('ID', widget.product.providerId),
         _buildTableRow('Number', widget.product.number),
         _buildTableRow('Name', widget.product.name),
-        _buildTableRow('Type', widget.product.type.label),
-        _buildTableRow('Card Brand', widget.product.cardBrand?.label ?? 'null'),
         _buildTableRow(
           'Card Last 4 Digits',
           widget.product.cardLast4Digits ?? 'null',

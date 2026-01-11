@@ -21,14 +21,14 @@ class CreditCardDetailsScreen extends StatefulWidget {
 
 class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
     with SingleTickerProviderStateMixin {
-  List<CreditCardBillPeriod> _nationalPeriods = [];
-  List<CreditCardBillPeriod> _internationalPeriods = [];
+  List<ExtractedCreditCardBillPeriod> _nationalPeriods = [];
+  List<ExtractedCreditCardBillPeriod> _internationalPeriods = [];
 
   late TabController _tabController;
   String? _selectedNationalPeriodId;
   String? _selectedInternationalPeriodId;
-  List<Transaction> _nationalTransactions = [];
-  List<Transaction> _internationalTransactions = [];
+  List<ExtractedTransaction> _nationalTransactions = [];
+  List<ExtractedTransaction> _internationalTransactions = [];
   bool _isLoadingNationalTransactions = false;
   bool _isLoadingInternationalTransactions = false;
   int _previousTabIndex = 0;
@@ -180,7 +180,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     ),
                     ..._nationalPeriods.map((period) {
                       return DropdownMenuItem<String>(
-                        value: period.id,
+                        value: period.providerId,
                         child: Text(
                           '${period.startDate}${period.endDate != null ? ' - ${period.endDate}' : ''}',
                         ),
@@ -234,7 +234,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                       ),
                       if (transaction.transactionDate != null)
                         Text('Date: ${transaction.transactionDate}'),
-                      Text('Type: ${transaction.type.name}'),
                     ],
                   ),
                 ),
@@ -272,7 +271,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     ),
                     ..._internationalPeriods.map((period) {
                       return DropdownMenuItem<String>(
-                        value: period.id,
+                        value: period.providerId,
                         child: Text(
                           '${period.startDate}${period.endDate != null ? ' - ${period.endDate}' : ''}',
                         ),
@@ -326,7 +325,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                       ),
                       if (transaction.transactionDate != null)
                         Text('Date: ${transaction.transactionDate}'),
-                      Text('Type: ${transaction.type.name}'),
                     ],
                   ),
                 ),

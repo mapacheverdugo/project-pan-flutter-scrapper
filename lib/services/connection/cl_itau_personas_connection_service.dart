@@ -9,6 +9,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart'
     hide CookieManager;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
+import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_mapper.dart';
@@ -237,7 +238,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,
     String productId,
   ) async {
@@ -247,7 +248,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
     String productId,
   ) async {
@@ -284,13 +285,13 @@ class ClItauPersonasConnectionService extends ConnectionService {
     }
   }
 
-  Future<List<CreditCardBillPeriod>> _getPeriodsForCurrencyType(
+  Future<List<ExtractedCreditCardBillPeriod>> _getPeriodsForCurrencyType(
     String credentials,
     String productId,
     String currencyType, // 'nacional' or 'internacional'
     Map<String, String> commonHeaders,
   ) async {
-    final periods = <CreditCardBillPeriod>[];
+    final periods = <ExtractedCreditCardBillPeriod>[];
     const maxEmptyPeriods = 0; // Stop at first empty period
 
     final cookieJar = CookieJar();
@@ -497,7 +498,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     return _Period(month: month, year: year, day: day);
   }
 
-  CreditCardBillPeriod _createBillPeriod(
+  ExtractedCreditCardBillPeriod _createBillPeriod(
     String productId,
     _Period period,
     String currencyType,
@@ -508,15 +509,18 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
     final startDate =
         '$year-${month.toString().padLeft(2, '0')}-${day?.toString().padLeft(2, '0') ?? ''}';
-    final currency = currencyType == 'nacional' ? 'CLP' : 'USD';
     final currencyTypeEnum = currencyType == 'nacional'
         ? CurrencyType.national
         : CurrencyType.international;
 
+    final currency = currencyTypeEnum == CurrencyType.national
+        ? Currency.clp
+        : Currency.usd;
+
     final periodId = '$productId|$startDate|${currencyTypeEnum.name}';
 
-    return CreditCardBillPeriod(
-      id: periodId,
+    return ExtractedCreditCardBillPeriod(
+      providerId: periodId,
       startDate: startDate,
       endDate: null,
       currency: currency,
@@ -543,7 +547,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String credentials,
     String productId,
     CurrencyType transactionType,

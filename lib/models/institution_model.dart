@@ -1,10 +1,10 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pan_scrapper/converters/institution_code_json_converter.dart';
+import 'package:pan_scrapper/converters/institution_status_json_converter.dart';
 import 'package:pan_scrapper/entities/institution.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/entities/institution_status.dart';
 import 'package:pan_scrapper/models/institution_brand_model.dart';
-import 'package:pan_scrapper/models/institution_code_json_converter.dart';
-import 'package:pan_scrapper/models/institution_status_json_converter.dart';
 
 part 'institution_model.g.dart';
 

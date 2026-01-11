@@ -124,7 +124,7 @@ class PanScrapperService {
     return authenticatedWrapper(connection.id, _client.getProducts);
   }
 
-  Future<List<Transaction>> getDepositaryAccountTransactions(
+  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String productId,
   ) async {
     return authenticatedWrapper(
@@ -134,7 +134,7 @@ class PanScrapperService {
     );
   }
 
-  Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
+  Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String productId,
   ) async {
     return authenticatedWrapper(
@@ -154,7 +154,7 @@ class PanScrapperService {
     );
   }
 
-  Future<List<Transaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
     String productId,
     CurrencyType transactionType,
   ) async {
@@ -173,24 +173,34 @@ class PanScrapperService {
     Future<T> Function(String credentials) function,
   ) async {
     var credentials = await _storage.getConnectionCredentials(connectionId);
-    credentials ??= await _client.auth(
-      connection.rawUsername,
-      connection.password,
-    );
+    log('authenticatedWrapper stored credentials: $credentials');
+    if (credentials == null) {
+      log('authenticatedWrapper No credentials found, authenticating');
+      credentials = await auth(connection.rawUsername, connection.password);
+      log('authenticatedWrapper New credentials: $credentials');
+    }
 
     try {
       final result = await function(credentials);
       return result;
     } on ConnectionException catch (e) {
       if (e.type == ConnectionExceptionType.invalidAuthCredentials) {
-        log('authenticatedWrapper Invalid credentials, re-authenticating');
-        final newCredentials = await _client.auth(
+        log(
+          'authenticatedWrapper ConnectionExceptionType.invalidAuthCredentials, re-authenticating',
+        );
+        final newCredentials = await auth(
           connection.rawUsername,
           connection.password,
         );
-        log('authenticatedWrapper New credentials: $newCredentials');
+        log(
+          'authenticatedWrapper New credentials after ConnectionExceptionType.invalidAuthCredentials: $newCredentials',
+        );
         return authenticatedWrapper(connectionId, function);
       }
+      log('authenticatedWrapper ConnectionException: $e');
+      rethrow;
+    } catch (e) {
+      log('authenticatedWrapper Error: $e');
       rethrow;
     }
   }
