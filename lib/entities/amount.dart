@@ -26,7 +26,9 @@ class Amount {
         ? text[text.length - 1]
         : '';
 
-    text = symbolAtTheEnd ? text.substring(0, text.length - 1) : text;
+    text = symbolAtTheEnd
+        ? text.substring(0, text.length - 1)
+        : (symbolAtTheStart ? text.substring(1) : text);
 
     if (thousandSeparator != null && thousandSeparator.isNotEmpty) {
       text = text.replaceAll(thousandSeparator, '');

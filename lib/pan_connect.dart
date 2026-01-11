@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/constants/storage_keys.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
 import 'package:pan_scrapper/models/institution_model.dart';
@@ -137,41 +134,22 @@ class PanConnect {
       publicKey: publicKey,
     );
 
-    final currentConnections = await _getSavedConnections();
-
-    currentConnections.add(
-      LocalConnectionModel(
-        id: executeLinkTokenResult.connectionId,
-        institutionCode: connection.institutionCode,
-        usernameHash: executeLinkTokenResult.usernameHash,
-        rawUsername: connection.username,
-        password: password,
-      ),
+    final newConnection = LocalConnectionModel(
+      id: executeLinkTokenResult.connectionId,
+      institutionCode: connection.institutionCode,
+      usernameHash: executeLinkTokenResult.usernameHash,
+      rawUsername: connection.username,
+      password: password,
     );
 
-    final newConnectionsJson = jsonEncode(currentConnections);
-    await storage.saveString(connectionsKey, newConnectionsJson);
+    final newConnections = await storage.saveNewConnection(newConnection);
 
-    return currentConnections.map((e) => e.toEntity()).toList();
-  }
-
-  static Future<List<LocalConnectionModel>> _getSavedConnections() async {
-    final storage = StorageServiceImpl();
-    var currentConnections = <LocalConnectionModel>[];
-
-    final connectionsJsonString = await storage.getString(connectionsKey);
-    if (connectionsJsonString != null && connectionsJsonString.isNotEmpty) {
-      final connectionsJson = jsonDecode(connectionsJsonString);
-      currentConnections = connectionsJson
-          .map((e) => LocalConnectionModel.fromJson(e))
-          .toList();
-    }
-
-    return currentConnections;
+    return newConnections.map((e) => e.toEntity()).toList();
   }
 
   static Future<List<LocalConnection>> getSavedConnections() async {
-    final currentConnections = await _getSavedConnections();
+    final storage = StorageServiceImpl();
+    final currentConnections = await storage.getSavedConnections();
     return currentConnections.map((e) => e.toEntity()).toList();
   }
 

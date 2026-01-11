@@ -1,55 +1,93 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
+import 'package:pan_scrapper/entities/local_connection.dart';
+import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
+import 'package:pan_scrapper/services/storage/storage_service.dart';
 
 import 'services/index.dart';
 
 class PanScrapperService {
-  final InstitutionCode institutionCode;
+  final LocalConnection connection;
   final BuildContext context;
   final bool headless;
 
   late final ConnectionService _client;
-  late final Dio _dio;
+  late final StorageService _storage;
 
   PanScrapperService({
     required this.context,
-    required this.institutionCode,
+    required this.connection,
     this.headless = true,
   }) {
-    _dio = Dio();
+    _storage = StorageServiceImpl();
+
+    _client = _getClient(
+      institutionCode: connection.institutionCode,
+      context: context,
+      headless: headless,
+    );
+  }
+
+  static ConnectionService _getClient({
+    required InstitutionCode institutionCode,
+    required BuildContext context,
+    bool headless = true,
+  }) {
+    final dio = Dio();
 
     switch (institutionCode) {
       case InstitutionCode.clBciPersonas:
-        _client = ClBciPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClBciPersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       case InstitutionCode.clSantanderPersonas:
-        _client = ClSantanderPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClSantanderPersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       case InstitutionCode.clScotiabankPersonas:
-        _client = ClScotiabankPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClScotiabankPersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       case InstitutionCode.clBancoChilePersonas:
-        _client = ClBancoChilePersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClBancoChilePersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       case InstitutionCode.clItauPersonas:
-        _client = ClItauPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClItauPersonasConnectionService(
+          dio,
+          ({String? cookies}) =>
+              _getWebview(context, headless: headless, cookies: cookies),
+        );
       case InstitutionCode.clBancoFalabellaPersonas:
-        _client = ClBancoFalabellaPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClBancoFalabellaPersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       case InstitutionCode.clBancoEstadoPersonas:
-        _client = ClBancoEstadoPersonasConnectionService(_dio, _getWebview);
-        break;
+        return ClBancoEstadoPersonasConnectionService(
+          dio,
+          () => _getWebview(context, headless: headless),
+        );
       default:
         throw Exception('Institution not supported');
     }
   }
 
-  Future<WebviewInstance> _getWebview({String? cookies}) async {
+  static Future<WebviewInstance> _getWebview(
+    BuildContext context, {
+    bool headless = true,
+    String? cookies,
+  }) async {
     return await Webview.run(
       headless: headless,
       context: context,
@@ -61,45 +99,99 @@ class PanScrapperService {
     return [];
   }
 
-  Future<String> auth(String username, String password) async {
-    return _client.auth(username, password);
+  static Future<List<ExtractedProductModel>> initialAuthAndGetProducts(
+    BuildContext context,
+    InstitutionCode institutionCode,
+    String username,
+    String password,
+  ) async {
+    final client = _getClient(
+      institutionCode: institutionCode,
+      context: context,
+      headless: true,
+    );
+    final credentials = await client.auth(username, password);
+    return client.getProducts(credentials);
   }
 
-  Future<List<ExtractedProductModel>> getProducts(String credentials) async {
-    return _client.getProducts(credentials);
+  Future<String> auth(String username, String password) async {
+    final credentials = await _client.auth(username, password);
+    await _storage.saveConnectionCredentials(connection.id, credentials);
+    return credentials;
+  }
+
+  Future<List<ExtractedProductModel>> getProducts() async {
+    return authenticatedWrapper(connection.id, _client.getProducts);
   }
 
   Future<List<Transaction>> getDepositaryAccountTransactions(
-    String credentials,
     String productId,
   ) async {
-    return _client.getDepositaryAccountTransactions(credentials, productId);
+    return authenticatedWrapper(
+      connection.id,
+      (credentials) =>
+          _client.getDepositaryAccountTransactions(credentials, productId),
+    );
   }
 
   Future<List<CreditCardBillPeriod>> getCreditCardBillPeriods(
-    String credentials,
     String productId,
   ) async {
-    return _client.getCreditCardBillPeriods(credentials, productId);
+    return authenticatedWrapper(
+      connection.id,
+      (credentials) => _client.getCreditCardBillPeriods(credentials, productId),
+    );
   }
 
   Future<CreditCardBill> getCreditCardBill(
-    String credentials,
     String productId,
     String periodId,
   ) async {
-    return _client.getCreditCardBill(credentials, productId, periodId);
+    return authenticatedWrapper(
+      connection.id,
+      (credentials) =>
+          _client.getCreditCardBill(credentials, productId, periodId),
+    );
   }
 
   Future<List<Transaction>> getCreditCardUnbilledTransactions(
-    String credentials,
     String productId,
     CurrencyType transactionType,
   ) async {
-    return _client.getCreditCardUnbilledTransactions(
-      credentials,
-      productId,
-      transactionType,
+    return authenticatedWrapper(
+      connection.id,
+      (credentials) => _client.getCreditCardUnbilledTransactions(
+        credentials,
+        productId,
+        transactionType,
+      ),
     );
+  }
+
+  Future<T> authenticatedWrapper<T>(
+    String connectionId,
+    Future<T> Function(String credentials) function,
+  ) async {
+    var credentials = await _storage.getConnectionCredentials(connectionId);
+    credentials ??= await _client.auth(
+      connection.rawUsername,
+      connection.password,
+    );
+
+    try {
+      final result = await function(credentials);
+      return result;
+    } on ConnectionException catch (e) {
+      if (e.type == ConnectionExceptionType.invalidAuthCredentials) {
+        log('authenticatedWrapper Invalid credentials, re-authenticating');
+        final newCredentials = await _client.auth(
+          connection.rawUsername,
+          connection.password,
+        );
+        log('authenticatedWrapper New credentials: $newCredentials');
+        return authenticatedWrapper(connectionId, function);
+      }
+      rethrow;
+    }
   }
 }

@@ -139,7 +139,7 @@ class ApiServiceImpl extends ApiService {
       ),
     );
 
-    final data = response.data;
+    final data = response.data?['data'];
     if (data == null) {
       throw Exception('Empty response from execute link token API');
     }

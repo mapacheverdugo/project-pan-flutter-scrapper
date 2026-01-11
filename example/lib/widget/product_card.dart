@@ -1,47 +1,19 @@
-import 'package:example/models/access_credentials.dart';
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
-import 'package:example/screens/credit_card_details_screen.dart';
-import 'package:example/screens/product_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
-import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ProductCard extends StatelessWidget {
   final ExtractedProductModel product;
-  final PanScrapperService service;
-  final AccessCredentials credentials;
+  final VoidCallback onTap;
 
-  const ProductCard({
-    super.key,
-    required this.product,
-    required this.service,
-    required this.credentials,
-  });
+  const ProductCard({super.key, required this.product, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        onTap: () {
-          final isCreditCard = product.type == ProductType.creditCard;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => isCreditCard
-                  ? CreditCardDetailsScreen(
-                      service: service,
-                      credentials: credentials,
-                      product: product,
-                    )
-                  : ProductDetailsScreen(
-                      service: service,
-                      credentials: credentials,
-                      product: product,
-                    ),
-            ),
-          );
-        },
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(

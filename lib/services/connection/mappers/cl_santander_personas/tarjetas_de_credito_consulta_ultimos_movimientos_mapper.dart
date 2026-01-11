@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:crypto/crypto.dart';
 import 'package:pan_scrapper/entities/currency.dart';
@@ -51,23 +52,38 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
         }
 
         final amountOptions = AmountParseOptions(
-          factor: transactionType == CurrencyType.national ? 100 : 100,
           decimalSeparator: ',',
           thousandSeparator: '.',
         );
 
+        log(
+          'TarjetasDeCreditoConsultaUltimosMovimientosMapper importe: $importe',
+        );
+
+        log(
+          'TarjetasDeCreditoConsultaUltimosMovimientosMapper movimiento.indicadorDebeHaber: ${movimiento.indicadorDebeHaber}',
+        );
+
         final symbol = movimiento.indicadorDebeHaber == 'D' ? '-' : '+';
+        final amountText = symbol + importe;
+
+        log(
+          'TarjetasDeCreditoConsultaUltimosMovimientosMapper amountText: $amountText',
+        );
+
         final amount = Amount.tryParse(
-          symbol + importe,
+          amountText,
           currency,
           options: amountOptions,
+        );
+
+        log(
+          'TarjetasDeCreditoConsultaUltimosMovimientosMapper amount: ${amount?.value}',
         );
 
         if (amount == null) {
           continue;
         }
-
-        final amountValue = amount.value;
 
         // Parse date - format might be YYMMDD or YYYYMMDD
         final fecha = movimiento.fecha;
@@ -89,8 +105,9 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
           description,
         );
 
-        // Convert amount to integer (amounts are stored as integers in cents)
-        final amountInt = (amountValue * 100).round();
+        log(
+          'TarjetasDeCreditoConsultaUltimosMovimientosMapper transactionId: $transactionId',
+        );
 
         transactions.add(
           Transaction(
@@ -108,6 +125,7 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
           ),
         );
       } catch (e) {
+        log('TarjetasDeCreditoConsultaUltimosMovimientosMapper error: $e');
         // Skip transactions that fail to parse
         continue;
       }

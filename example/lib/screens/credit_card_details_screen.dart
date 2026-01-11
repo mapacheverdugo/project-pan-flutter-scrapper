@@ -1,4 +1,3 @@
-import 'package:example/models/access_credentials.dart';
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
 import 'package:flutter/material.dart';
@@ -9,12 +8,10 @@ class CreditCardDetailsScreen extends StatefulWidget {
   const CreditCardDetailsScreen({
     super.key,
     required this.service,
-    required this.credentials,
     required this.product,
   });
 
   final PanScrapperService service;
-  final AccessCredentials credentials;
   final ExtractedProductModel product;
 
   @override
@@ -120,35 +117,39 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
   }
 
   Widget _buildProductPropertiesTable() {
+    final product = widget.product;
     return Table(
-      border: TableBorder.all(),
-      children: [
-        _buildTableRow('ID', widget.product.providerId),
-        _buildTableRow('Number', widget.product.number),
-        _buildTableRow('Name', widget.product.name),
-        _buildTableRow('Type', widget.product.type.label),
-        _buildTableRow('Card Brand', widget.product.cardBrand?.label ?? 'null'),
+      children: <TableRow>[
+        _buildTableRow('ID', product.providerId),
+        _buildTableRow('Name', product.name, isOdd: true),
+        _buildTableRow('Type', product.type.label),
         _buildTableRow(
-          'Card Last 4 Digits',
-          widget.product.cardLast4Digits ?? 'null',
+          'Card Brand',
+          product.cardBrand?.label ?? 'null',
+          isOdd: true,
         ),
+        _buildTableRow('Card Last 4 Digits', product.cardLast4Digits ?? 'null'),
         _buildTableRow(
           'Available Amount',
-          widget.product.availableAmount?.formattedDependingOnCurrency ??
-              'null',
+          product.availableAmount?.formattedDependingOnCurrency ?? 'null',
+          isOdd: true,
         ),
-        _buildTableRow(
-          'Credit Balances',
-          widget.product.creditBalances != null
-              ? widget.product.creditBalances!.length.toString()
-              : 'null',
-        ),
+        for (final creditBalance in product.creditBalances ?? []) ...[
+          _buildTableRow(
+            'Credit Balance ${creditBalance.currency.isoLetters}',
+            creditBalance.availableAmount.formattedDependingOnCurrency,
+            isOdd: product.creditBalances!.indexOf(creditBalance) % 2 != 0,
+          ),
+        ],
       ],
     );
   }
 
-  TableRow _buildTableRow(String label, String value) {
+  TableRow _buildTableRow(String label, String value, {bool isOdd = false}) {
     return TableRow(
+      decoration: BoxDecoration(
+        color: isOdd ? Colors.grey[200] : Colors.transparent,
+      ),
       children: [
         Padding(
           padding: EdgeInsets.all(8),
@@ -346,7 +347,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
   Future<void> _fetchPeriods() async {
     try {
       final periods = await widget.service.getCreditCardBillPeriods(
-        widget.credentials.resultCredentials,
         widget.product.providerId,
       );
       setState(() {
@@ -377,7 +377,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       if (_selectedNationalPeriodId == 'unbilled') {
         final unbilledTransactions = await widget.service
             .getCreditCardUnbilledTransactions(
-              widget.credentials.resultCredentials,
               widget.product.providerId,
               CurrencyType.national,
             );
@@ -388,7 +387,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       }
 
       final bill = await widget.service.getCreditCardBill(
-        widget.credentials.resultCredentials,
         widget.product.providerId,
         _selectedNationalPeriodId!,
       );
@@ -419,7 +417,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       if (_selectedInternationalPeriodId == 'unbilled') {
         final unbilledTransactions = await widget.service
             .getCreditCardUnbilledTransactions(
-              widget.credentials.resultCredentials,
               widget.product.providerId,
               CurrencyType.international,
             );
@@ -431,7 +428,6 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       }
 
       final bill = await widget.service.getCreditCardBill(
-        widget.credentials.resultCredentials,
         widget.product.providerId,
         _selectedInternationalPeriodId!,
       );

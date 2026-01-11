@@ -1,19 +1,15 @@
-import 'package:example/models/access_credentials.dart';
-import 'package:example/widget/code_block.dart';
+import 'package:example/screens/credit_card_details_screen.dart';
+import 'package:example/screens/product_details_screen.dart';
 import 'package:example/widget/product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ConnectionDetailsScreen extends StatefulWidget {
-  const ConnectionDetailsScreen({
-    super.key,
-    required this.service,
-    required this.credentials,
-  });
+  const ConnectionDetailsScreen({super.key, required this.connection});
 
-  final PanScrapperService service;
-  final AccessCredentials credentials;
+  final LocalConnection connection;
 
   @override
   State<ConnectionDetailsScreen> createState() =>
@@ -24,12 +20,17 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
   List<ExtractedProductModel> _products = [];
   bool _isLoading = false;
 
+  late final PanScrapperService service = PanScrapperService(
+    context: context,
+    connection: widget.connection,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${widget.credentials.username} - ${widget.service.institutionCode.name}',
+          '${widget.connection.rawUsername} - ${widget.connection.institutionCode.name}',
         ),
       ),
       body: SingleChildScrollView(
@@ -45,7 +46,6 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                 ),
                 contentPadding: EdgeInsets.zero,
               ),
-              CodeBlock(text: widget.credentials.resultCredentials),
               SizedBox(height: 10),
               ListTile(
                 title: Text(
@@ -74,10 +74,27 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: _products.length,
                   itemBuilder: (context, index) {
+                    final product = _products[index];
                     return ProductCard(
-                      product: _products[index],
-                      service: widget.service,
-                      credentials: widget.credentials,
+                      product: product,
+                      onTap: () {
+                        final isCreditCard =
+                            product.type == ProductType.creditCard;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => isCreditCard
+                                ? CreditCardDetailsScreen(
+                                    service: service,
+                                    product: product,
+                                  )
+                                : ProductDetailsScreen(
+                                    service: service,
+                                    product: product,
+                                  ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -93,9 +110,7 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
       _isLoading = true;
     });
     try {
-      final newProducts = await widget.service.getProducts(
-        widget.credentials.resultCredentials,
-      );
+      final newProducts = await service.getProducts();
       setState(() {
         _isLoading = false;
         _products = newProducts;

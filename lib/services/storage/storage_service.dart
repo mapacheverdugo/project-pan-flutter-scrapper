@@ -1,9 +1,23 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:pan_scrapper/constants/storage_keys.dart';
+import 'package:pan_scrapper/models/local_connection_model.dart';
 
 abstract class StorageService {
-  Future<void> saveString(String key, String value);
-  Future<String?> getString(String key);
-  Future<void> delete(String key);
+  Future<List<LocalConnectionModel>> saveNewConnection(
+    LocalConnectionModel connection,
+  );
+  Future<List<LocalConnectionModel>> getSavedConnections();
+  Future<void> deleteConnection(String id);
+
+  Future<void> saveConnectionCredentials(
+    String connectionId,
+    String credentials,
+  );
+  Future<String?> getConnectionCredentials(String connectionId);
+  Future<void> deleteConnectionCredentials(String connectionId);
 }
 
 class StorageServiceImpl extends StorageService {
@@ -12,17 +26,66 @@ class StorageServiceImpl extends StorageService {
   StorageServiceImpl();
 
   @override
-  Future<void> saveString(String key, String value) async {
-    await _storage.write(key: key, value: value);
+  Future<List<LocalConnectionModel>> saveNewConnection(
+    LocalConnectionModel connection,
+  ) async {
+    final currentConnections = await getSavedConnections();
+
+    currentConnections.add(connection);
+
+    final newConnectionsJson = jsonEncode(currentConnections);
+    await _storage.write(key: connectionsKey, value: newConnectionsJson);
+
+    return currentConnections;
   }
 
   @override
-  Future<String?> getString(String key) async {
-    return await _storage.read(key: key);
+  Future<List<LocalConnectionModel>> getSavedConnections() async {
+    var currentConnections = <LocalConnectionModel>[];
+
+    final connectionsJsonString = await _storage.read(key: connectionsKey);
+    if (connectionsJsonString != null && connectionsJsonString.isNotEmpty) {
+      final connectionsJson = jsonDecode(connectionsJsonString);
+      try {
+        currentConnections = connectionsJson
+            .map<LocalConnectionModel>((e) => LocalConnectionModel.fromJson(e))
+            .toList();
+      } catch (e) {
+        log('Error parsing connections: ${e.toString()}');
+      }
+    }
+
+    return currentConnections;
   }
 
   @override
-  Future<void> delete(String key) async {
-    await _storage.delete(key: key);
+  Future<void> deleteConnection(String id) async {
+    final currentConnections = await getSavedConnections();
+    final newConnections = currentConnections.where((e) => e.id != id).toList();
+    final newConnectionsJson = jsonEncode(newConnections);
+    await _storage.write(key: connectionsKey, value: newConnectionsJson);
+  }
+
+  @override
+  Future<void> saveConnectionCredentials(
+    String connectionId,
+    String credentials,
+  ) async {
+    await _storage.write(
+      key: '$connectionCredentialsKeyPreffix$connectionId',
+      value: credentials,
+    );
+  }
+
+  @override
+  Future<String?> getConnectionCredentials(String connectionId) async {
+    return await _storage.read(
+      key: '$connectionCredentialsKeyPreffix$connectionId',
+    );
+  }
+
+  @override
+  Future<void> deleteConnectionCredentials(String connectionId) async {
+    await _storage.delete(key: '$connectionCredentialsKeyPreffix$connectionId');
   }
 }

@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_santander_personas/depositary_account_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_santander_personas/product_mapper.dart';
@@ -40,6 +41,13 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         );
         if (request.readyState == AjaxRequestReadyState.DONE) {
           final response = request.responseText;
+          final statusCode = request.status;
+          if (statusCode != 200) {
+            log(
+              'SantanderService auth blocked with status code: $statusCode and response: $response',
+            );
+            throw ConnectionException(ConnectionExceptionType.authBlocked);
+          }
           completer.complete(response);
         }
 
@@ -88,9 +96,18 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
   @override
   Future<List<ExtractedProductModel>> getProducts(String credentials) async {
     final webview = await _webviewFactory();
-    try {
-      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
 
+    late final Map<String, dynamic> tokenResponse;
+    try {
+      tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+    } catch (e) {
+      throw ConnectionException(
+        ConnectionExceptionType.invalidAuthCredentials,
+        originalException: e,
+      );
+    }
+
+    try {
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
       final jwt = tokenModel.tokenJwt;
@@ -322,7 +339,16 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     String productId,
   ) async {
     try {
-      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      late final Map<String, dynamic> tokenResponse;
+      try {
+        tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      } catch (e) {
+        throw ConnectionException(
+          ConnectionExceptionType.invalidAuthCredentials,
+          originalException: e,
+        );
+      }
+
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
       final accessToken = tokenModel.accessToken;
@@ -544,7 +570,16 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     String productId,
   ) async {
     try {
-      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      late final Map<String, dynamic> tokenResponse;
+      try {
+        tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      } catch (e) {
+        throw ConnectionException(
+          ConnectionExceptionType.invalidAuthCredentials,
+          originalException: e,
+        );
+      }
+
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
       final jwt = tokenModel.tokenJwt;
@@ -684,7 +719,16 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     CurrencyType transactionType,
   ) async {
     try {
-      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      late final Map<String, dynamic> tokenResponse;
+      try {
+        tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      } catch (e) {
+        throw ConnectionException(
+          ConnectionExceptionType.invalidAuthCredentials,
+          originalException: e,
+        );
+      }
+
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
       final accessToken = tokenModel.accessToken;
@@ -795,7 +839,16 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     String periodId,
   ) async {
     try {
-      final tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      late final Map<String, dynamic> tokenResponse;
+      try {
+        tokenResponse = jsonDecode(credentials) as Map<String, dynamic>;
+      } catch (e) {
+        throw ConnectionException(
+          ConnectionExceptionType.invalidAuthCredentials,
+          originalException: e,
+        );
+      }
+
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
       final accessToken = tokenModel.accessToken;

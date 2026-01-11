@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:crypto/crypto.dart';
 import 'package:pan_scrapper/entities/currency.dart';
@@ -72,14 +73,24 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
 
         // Parse amount - for national divide by 100, for international use as is
         final importe = tx.importe;
+        log('importe: $importe');
         if (importe == null || importe.isEmpty) {
           continue;
         }
 
-        final importeInt = int.tryParse(importe) ?? 0;
-        final amount = billingCurrencyType == CurrencyType.national
-            ? importeInt / 100
-            : importeInt.toDouble();
+        final amountParseOptions = billingCurrencyType == CurrencyType.national
+            ? AmountParseOptions()
+            : AmountParseOptions(factor: 100);
+
+        final amount = Amount.tryParse(
+          importe,
+          currency,
+          options: amountParseOptions,
+        );
+
+        if (amount == null) {
+          continue;
+        }
 
         // Parse date
         final fecha = tx.fecha;
@@ -111,20 +122,17 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
           description,
         );
 
-        // Convert amount to integer (amounts are stored as integers in cents)
-        final amountInt = (amount * 100).round();
-
         transactions.add(
           Transaction(
             id: transactionId,
             type: TransactionType.default_,
             description: description,
-            amount: Amount(value: amountInt, currency: currency),
+            amount: amount,
             billingCurrencyType: billingCurrencyType,
             transactionDate: transactionDate,
             transactionTime: null,
             processingDate: null,
-            originalAmount: Amount(value: amountInt, currency: currency),
+            originalAmount: amount,
             city: ciudad,
             country: country,
           ),

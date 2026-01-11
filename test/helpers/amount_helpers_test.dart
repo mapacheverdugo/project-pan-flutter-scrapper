@@ -139,4 +139,61 @@ void main() {
       expect(amount.value, 35080);
     },
   );
+
+  test(r'parse amount in USD with text "4,05" to be equal to 405', () {
+    final amount = Amount.parse(
+      '4,05',
+      Currency.usd,
+      options: AmountParseOptions(
+        factor: 1,
+        thousandSeparator: '.',
+        decimalSeparator: ',',
+        currencyDecimals: 2,
+      ),
+    );
+    expect(amount.value, 405);
+  });
+
+  test(r'parse amount in CLP with text "2.624.901" to be equal to 2624901', () {
+    final amount = Amount.parse(
+      '2.624.901',
+      Currency.clp,
+      options: AmountParseOptions(
+        factor: 1,
+        thousandSeparator: '.',
+        decimalSeparator: ',',
+      ),
+    );
+    expect(amount.value, 2624901);
+  });
+
+  test(r'parse amount in USD with text "-4,05" to be equal to -405', () {
+    final amount = Amount.parse(
+      '-4,05',
+      Currency.usd,
+      options: AmountParseOptions(
+        factor: 1,
+        thousandSeparator: '.',
+        decimalSeparator: ',',
+        currencyDecimals: 2,
+      ),
+    );
+    expect(amount.value, -405);
+  });
+
+  test(
+    r'parse amount in CLP with text "-2.624.901" to be equal to -2624901',
+    () {
+      final amount = Amount.parse(
+        '-2.624.901',
+        Currency.clp,
+        options: AmountParseOptions(
+          factor: 1,
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+        ),
+      );
+      expect(amount.value, -2624901);
+    },
+  );
 }

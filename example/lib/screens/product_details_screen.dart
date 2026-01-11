@@ -1,4 +1,3 @@
-import 'package:example/models/access_credentials.dart';
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
 import 'package:example/widget/period_card.dart';
@@ -10,14 +9,11 @@ class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({
     super.key,
     required this.service,
-    required this.credentials,
     required this.product,
   });
 
   final PanScrapperService service;
-  final AccessCredentials credentials;
   final ExtractedProductModel product;
-
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
 }
@@ -197,10 +193,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     });
     try {
       final transactions = await widget.service
-          .getDepositaryAccountTransactions(
-            widget.credentials.resultCredentials,
-            widget.product.providerId,
-          );
+          .getDepositaryAccountTransactions(widget.product.providerId);
       setState(() {
         _isLoadingTransactions = false;
         _transactions = transactions;
@@ -223,7 +216,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     });
     try {
       final periods = await widget.service.getCreditCardBillPeriods(
-        widget.credentials.resultCredentials,
         widget.product.providerId,
       );
       setState(() {
