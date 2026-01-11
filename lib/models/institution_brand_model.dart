@@ -53,6 +53,17 @@ class InstitutionBrandModel {
     this.updatedAt,
   });
 
+  factory InstitutionBrandModel.fromEntity(InstitutionBrand institutionBrand) =>
+      InstitutionBrandModel(
+        id: institutionBrand.id,
+        name: institutionBrand.name,
+        logoPositiveUrl: institutionBrand.logoPositiveUrl,
+        logoNegativeUrl: institutionBrand.logoNegativeUrl,
+        iconPositiveUrl: institutionBrand.iconPositiveUrl,
+        iconNegativeUrl: institutionBrand.iconNegativeUrl,
+        iconAltUrl: institutionBrand.iconAltUrl,
+      );
+
   factory InstitutionBrandModel.fromJson(Map<String, dynamic> json) =>
       _$InstitutionBrandModelFromJson(json);
 

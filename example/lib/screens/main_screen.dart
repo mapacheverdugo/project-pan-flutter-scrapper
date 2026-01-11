@@ -70,13 +70,7 @@ class _MainScreenState extends State<MainScreen> {
                     return;
                   }
 
-                  await PanConnect.launch(
-                    context,
-                    publicKey,
-                    linkToken,
-                    selectedInstitutionCode:
-                        InstitutionCode.clSantanderPersonas,
-                  );
+                  await PanConnect.launch(context, publicKey, linkToken);
                 },
                 child: Text('Launch'),
               ),

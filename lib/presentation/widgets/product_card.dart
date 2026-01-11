@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/entities/product.dart';
-import 'package:pan_scrapper/entities/product_type.dart';
+import 'package:pan_scrapper/models/connection/product.dart';
+import 'package:pan_scrapper/models/connection/product_type.dart';
 import 'package:pan_scrapper/presentation/widgets/default_card.dart';
 
 class ProductCard extends StatelessWidget {
-  final Product product;
+  final ExtractedProductModel product;
   final bool isSelected;
   final Function({required bool isSelected}) onSelected;
 

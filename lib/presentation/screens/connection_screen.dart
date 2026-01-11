@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:pan_scrapper/entities/institution.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/entities/link_intent.dart';
+import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/models/connection_step.dart';
@@ -47,15 +48,17 @@ class ConnectionStepLayout extends StatelessWidget {
 }
 
 class ConnectionFlowScreen extends StatefulWidget {
-  final InstitutionCode selectedInstitutionCode;
   final LinkIntent linkIntent;
   final List<Institution> institutions;
-  final Function(String)? onSuccess;
+  final Function(
+    ExtractedConnectionResultModel connectionResult,
+    String password,
+  )?
+  onSuccess;
   final Function(String)? onError;
 
   const ConnectionFlowScreen({
     super.key,
-    required this.selectedInstitutionCode,
     required this.linkIntent,
     required this.institutions,
     this.onSuccess,
@@ -74,9 +77,9 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
     super.initState();
     _connectionNotifier = ConnectionNotifier(
       ConnectionState(
-        selectedInstitutionCode: widget.selectedInstitutionCode,
         institutions: widget.institutions,
         linkIntent: widget.linkIntent,
+        selectedInstitutionCode: widget.linkIntent.preselectedInstitutionCode,
       ),
     );
   }
@@ -94,6 +97,8 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
       child: ListenableBuilder(
         listenable: _connectionNotifier,
         builder: (context, _) {
+          final selectedInstitutionCode =
+              _connectionNotifier.value.selectedInstitutionCode;
           return Navigator(
             initialRoute: '/welcome',
             onGenerateRoute: (RouteSettings settings) {
@@ -119,7 +124,7 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
                       onLoginPressed: (context, username, password) {
                         _login(
                           context,
-                          widget.selectedInstitutionCode,
+                          selectedInstitutionCode!,
                           username,
                           password,
                         );
@@ -133,7 +138,11 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
                 case '/products':
                   screen = ConnectionStepLayout(
                     step: ConnectionStep.products,
-                    child: ConnectionSelectProductsView(),
+                    child: ConnectionSelectProductsView(
+                      onContinue: (productIds) {
+                        _selectProducts(productIds);
+                      },
+                    ),
                   );
                   break;
 
@@ -185,6 +194,9 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
 
       _connectionNotifier.setProducts(products);
 
+      _connectionNotifier.setUsername(username);
+      _connectionNotifier.setPassword(password);
+
       if (context.mounted) {
         Navigator.of(context).pushNamed('/products');
       }
@@ -192,5 +204,40 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
       _connectionNotifier.setLoading(false);
       widget.onError?.call(e.toString());
     }
+  }
+
+  Future<void> _selectProducts(List<String> productIds) async {
+    _connectionNotifier.setLoading(true);
+
+    _connectionNotifier.setSelectedProductIds(productIds);
+    final selectedInstitution = _connectionNotifier.value.selectedInstitution;
+    final selectedInstitutionCode = selectedInstitution?.code;
+    final selectedProducts = _connectionNotifier.value.selectedProducts;
+    final username = _connectionNotifier.value.username;
+    final password = _connectionNotifier.value.password;
+
+    if (selectedInstitutionCode == null) {
+      throw Exception('Selected institution is required');
+    }
+
+    if (username == null) {
+      throw Exception('Username is required');
+    }
+
+    if (password == null) {
+      throw Exception('Password is required');
+    }
+
+    final connection = ExtractedConnectionResultModel(
+      institutionCode: selectedInstitutionCode,
+      username: username,
+      products: selectedProducts,
+      credentials: ExtractedConnectionResultCredentialsModel(
+        username: username,
+        password: null,
+      ),
+    );
+
+    widget.onSuccess?.call(connection, password);
   }
 }

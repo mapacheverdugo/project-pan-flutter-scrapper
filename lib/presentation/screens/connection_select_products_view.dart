@@ -5,7 +5,9 @@ import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/product_card.dart';
 
 class ConnectionSelectProductsView extends StatefulWidget {
-  const ConnectionSelectProductsView({super.key});
+  const ConnectionSelectProductsView({super.key, required this.onContinue});
+
+  final Function(List<String> productIds) onContinue;
 
   @override
   State<ConnectionSelectProductsView> createState() =>
@@ -52,7 +54,7 @@ class _ConnectionSelectProductsViewState
                     children: [
                       ...products.map((product) {
                         final isSelected = selectedProductIds.contains(
-                          product.id,
+                          product.providerId,
                         );
                         return ProductCard(
                           product: product,
@@ -62,11 +64,13 @@ class _ConnectionSelectProductsViewState
                               selectedProductIds,
                             );
                             if (isSelected) {
-                              if (!currentSelected.contains(product.id)) {
-                                currentSelected.add(product.id);
+                              if (!currentSelected.contains(
+                                product.providerId,
+                              )) {
+                                currentSelected.add(product.providerId);
                               }
                             } else {
-                              currentSelected.remove(product.id);
+                              currentSelected.remove(product.providerId);
                             }
                             connectionNotifier.setSelectedProductIds(
                               currentSelected,
@@ -85,7 +89,7 @@ class _ConnectionSelectProductsViewState
                       size: DefaultButtonSize.lg,
                       onPressed: selectedProductIds.isNotEmpty
                           ? () {
-                              // TODO: Handle product selection
+                              widget.onContinue(selectedProductIds);
                             }
                           : null,
                     ),

@@ -42,6 +42,18 @@ class InstitutionModel {
     this.updatedAt,
   });
 
+  factory InstitutionModel.fromEntity(Institution institution) =>
+      InstitutionModel(
+        id: institution.id,
+        code: institution.code,
+        country: institution.country,
+        status: institution.status,
+        brandId: institution.brandId,
+        brand: InstitutionBrandModel.fromEntity(institution.brand),
+        createdAt: institution.createdAt,
+        updatedAt: institution.updatedAt,
+      );
+
   factory InstitutionModel.fromJson(Map<String, dynamic> json) =>
       _$InstitutionModelFromJson(json);
 

@@ -1,10 +1,16 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/entities/institution_code.dart';
+import 'package:pan_scrapper/constants/storage_keys.dart';
+import 'package:pan_scrapper/entities/local_connection.dart';
+import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
 import 'package:pan_scrapper/models/institution_model.dart';
 import 'package:pan_scrapper/models/link_intent_model.dart';
+import 'package:pan_scrapper/models/local_connection_model.dart';
 import 'package:pan_scrapper/presentation/screens/connection_screen.dart';
-import 'package:pan_scrapper/services/institutions_api_service.dart';
+import 'package:pan_scrapper/services/api/api_service.dart';
+import 'package:pan_scrapper/services/storage/storage_service.dart';
 
 class PanConnect {
   PanConnect();
@@ -26,22 +32,17 @@ class PanConnect {
   static Future<void> launch(
     BuildContext context,
     String publicKey,
-    String linkToken, {
-    InstitutionCode? selectedInstitutionCode,
-  }) async {
-    if (selectedInstitutionCode == null) {
-      throw Exception('Selected institution is required');
-    }
-
+    String linkToken,
+  ) async {
     final dio = Dio();
-    final institutionsService = InstitutionsApiService(dio);
+    final apiService = ApiServiceImpl(dio);
 
     try {
       _showLoadingOverlay(context);
 
       final results = await Future.wait([
-        institutionsService.fetchInstitutions(publicKey: publicKey),
-        institutionsService.fetchLinkIntent(linkToken: linkToken),
+        apiService.fetchInstitutions(publicKey: publicKey),
+        apiService.fetchLinkIntent(linkToken: linkToken, publicKey: publicKey),
       ]);
 
       if (context.mounted) {
@@ -77,9 +78,19 @@ class PanConnect {
                 },
             pageBuilder: (context, animation, secondaryAnimation) =>
                 ConnectionFlowScreen(
-                  selectedInstitutionCode: selectedInstitutionCode,
                   institutions: institutions,
                   linkIntent: linkIntent,
+                  onSuccess: (connection, password) async {
+                    await _saveConnection(
+                      connection: connection,
+                      password: password,
+                      linkToken: linkToken,
+                      publicKey: publicKey,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
                 ),
           ),
         );
@@ -109,4 +120,60 @@ class PanConnect {
       dio.close();
     }
   }
+
+  static Future<List<LocalConnection>> _saveConnection({
+    required ExtractedConnectionResultModel connection,
+    required String linkToken,
+    required String publicKey,
+    required String password,
+  }) async {
+    final dio = Dio();
+    final apiService = ApiServiceImpl(dio);
+    final storage = StorageServiceImpl();
+
+    final executeLinkTokenResult = await apiService.executeLinkToken(
+      linkToken: linkToken,
+      connectionResult: connection,
+      publicKey: publicKey,
+    );
+
+    final currentConnections = await _getSavedConnections();
+
+    currentConnections.add(
+      LocalConnectionModel(
+        id: executeLinkTokenResult.connectionId,
+        institutionCode: connection.institutionCode,
+        usernameHash: executeLinkTokenResult.usernameHash,
+        rawUsername: connection.username,
+        password: password,
+      ),
+    );
+
+    final newConnectionsJson = jsonEncode(currentConnections);
+    await storage.saveString(connectionsKey, newConnectionsJson);
+
+    return currentConnections.map((e) => e.toEntity()).toList();
+  }
+
+  static Future<List<LocalConnectionModel>> _getSavedConnections() async {
+    final storage = StorageServiceImpl();
+    var currentConnections = <LocalConnectionModel>[];
+
+    final connectionsJsonString = await storage.getString(connectionsKey);
+    if (connectionsJsonString != null && connectionsJsonString.isNotEmpty) {
+      final connectionsJson = jsonDecode(connectionsJsonString);
+      currentConnections = connectionsJson
+          .map((e) => LocalConnectionModel.fromJson(e))
+          .toList();
+    }
+
+    return currentConnections;
+  }
+
+  static Future<List<LocalConnection>> getSavedConnections() async {
+    final currentConnections = await _getSavedConnections();
+    return currentConnections.map((e) => e.toEntity()).toList();
+  }
+
+  static Future<void> syncLocalConnection(LocalConnection connection) async {}
 }

@@ -21,7 +21,7 @@ class ConnectionDetailsScreen extends StatefulWidget {
 }
 
 class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
-  List<Product> _products = [];
+  List<ExtractedProductModel> _products = [];
   bool _isLoading = false;
 
   @override

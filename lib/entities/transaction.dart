@@ -2,6 +2,7 @@ import 'package:pan_scrapper/entities/amount.dart';
 import 'package:pan_scrapper/entities/billing_status.dart';
 import 'package:pan_scrapper/entities/currency_type.dart';
 import 'package:pan_scrapper/entities/transaction_type.dart';
+import 'package:pan_scrapper/models/connection/amount_ext.dart';
 
 class TransactionInstallments {
   final int currentCount;

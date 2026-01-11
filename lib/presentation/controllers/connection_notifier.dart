@@ -3,37 +3,47 @@ import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/institution.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/entities/link_intent.dart';
-import 'package:pan_scrapper/entities/product.dart';
+import 'package:pan_scrapper/models/connection/product.dart';
 
 /// Immutable model representing the connection state
 class ConnectionState {
   final bool isLoading;
   final List<Institution> institutions;
   final LinkIntent linkIntent;
-  final List<Product> products;
+  final List<ExtractedProductModel> products;
   final InstitutionCode? selectedInstitutionCode;
   final List<String> selectedProductIds;
+  final String? username;
+  final String? password;
 
   Institution? get selectedInstitution => institutions.firstWhereOrNull(
     (institution) => institution.code == selectedInstitutionCode,
   );
 
+  List<ExtractedProductModel> get selectedProducts => products
+      .where((product) => selectedProductIds.contains(product.providerId))
+      .toList();
+
   const ConnectionState({
-    required this.selectedInstitutionCode,
     required this.institutions,
     required this.linkIntent,
+    this.selectedInstitutionCode,
     this.isLoading = false,
     this.products = const [],
     this.selectedProductIds = const [],
+    this.username,
+    this.password,
   });
 
   ConnectionState copyWith({
     bool? isLoading,
-    List<Product>? products,
+    List<ExtractedProductModel>? products,
     List<Institution>? institutions,
     InstitutionCode? selectedInstitutionCode,
     LinkIntent? linkIntent,
     List<String>? selectedProductIds,
+    String? username,
+    String? password,
   }) {
     return ConnectionState(
       isLoading: isLoading ?? this.isLoading,
@@ -43,6 +53,8 @@ class ConnectionState {
           selectedInstitutionCode ?? this.selectedInstitutionCode,
       linkIntent: linkIntent ?? this.linkIntent,
       selectedProductIds: selectedProductIds ?? this.selectedProductIds,
+      username: username ?? this.username,
+      password: password ?? this.password,
     );
   }
 
@@ -55,7 +67,9 @@ class ConnectionState {
         other.institutions == institutions &&
         other.selectedInstitutionCode == selectedInstitutionCode &&
         other.linkIntent == linkIntent &&
-        other.selectedProductIds == selectedProductIds;
+        other.selectedProductIds == selectedProductIds &&
+        other.username == username &&
+        other.password == password;
   }
 
   @override
@@ -66,6 +80,8 @@ class ConnectionState {
     selectedInstitutionCode,
     linkIntent,
     selectedProductIds,
+    username,
+    password,
   );
 }
 
@@ -79,8 +95,10 @@ class ConnectionNotifier extends ValueNotifier<ConnectionState> {
   }
 
   /// Sets the products list and selects all products by default
-  void setProducts(List<Product> products) {
-    final allProductIds = products.map((product) => product.id).toList();
+  void setProducts(List<ExtractedProductModel> products) {
+    final allProductIds = products
+        .map((product) => product.providerId)
+        .toList();
     value = value.copyWith(
       products: products,
       selectedProductIds: allProductIds,
@@ -107,6 +125,16 @@ class ConnectionNotifier extends ValueNotifier<ConnectionState> {
   /// Sets the selected product IDs
   void setSelectedProductIds(List<String> selectedProductIds) {
     value = value.copyWith(selectedProductIds: selectedProductIds);
+  }
+
+  /// Sets the username
+  void setUsername(String username) {
+    value = value.copyWith(username: username);
+  }
+
+  /// Sets the password
+  void setPassword(String password) {
+    value = value.copyWith(password: password);
   }
 
   /// Clears the state (resets to initial state)

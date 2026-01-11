@@ -70,17 +70,6 @@ class Amount {
   String get formattedWithCurrency => '$formatted ${currency.isoLetters}';
   String get formattedDependingOnCurrency =>
       currency == Currency.clp ? formatted : formattedWithCurrency;
-
-  factory Amount.fromJson(Map<String, dynamic> json) {
-    return Amount(
-      currency: Currency.fromIsoLetters(json['currency'] as String),
-      value: (json['value'] as num).toInt(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'currency': currency.isoLetters, 'value': value};
-  }
 }
 
 class AmountParseOptions {

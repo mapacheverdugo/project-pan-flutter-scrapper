@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/entities/institution_code.dart';
-import 'package:pan_scrapper/services/connection_service.dart';
-import 'package:pan_scrapper/webview/webview.dart';
+import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/webview/webview.dart';
 
 import 'services/index.dart';
 
@@ -65,7 +65,7 @@ class PanScrapperService {
     return _client.auth(username, password);
   }
 
-  Future<List<Product>> getProducts(String credentials) async {
+  Future<List<ExtractedProductModel>> getProducts(String credentials) async {
     return _client.getProducts(credentials);
   }
 

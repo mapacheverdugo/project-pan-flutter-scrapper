@@ -16,7 +16,7 @@ class ProductDetailsScreen extends StatefulWidget {
 
   final PanScrapperService service;
   final AccessCredentials credentials;
-  final Product product;
+  final ExtractedProductModel product;
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
@@ -154,7 +154,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     return Table(
       border: TableBorder.all(),
       children: [
-        _buildTableRow('ID', widget.product.id),
+        _buildTableRow('ID', widget.product.providerId),
         _buildTableRow('Number', widget.product.number),
         _buildTableRow('Name', widget.product.name),
         _buildTableRow('Type', widget.product.type.label),
@@ -174,10 +174,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           widget.product.creditBalances != null
               ? widget.product.creditBalances!.length.toString()
               : 'null',
-        ),
-        _buildTableRow(
-          'Is For Secondary Card Holder',
-          widget.product.isForSecondaryCardHolder.toString(),
         ),
       ],
     );
@@ -203,7 +199,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       final transactions = await widget.service
           .getDepositaryAccountTransactions(
             widget.credentials.resultCredentials,
-            widget.product.id,
+            widget.product.providerId,
           );
       setState(() {
         _isLoadingTransactions = false;
@@ -228,7 +224,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     try {
       final periods = await widget.service.getCreditCardBillPeriods(
         widget.credentials.resultCredentials,
-        widget.product.id,
+        widget.product.providerId,
       );
       setState(() {
         _isLoadingPeriods = false;

@@ -8,7 +8,7 @@ import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
 class ProductCard extends StatelessWidget {
-  final Product product;
+  final ExtractedProductModel product;
   final PanScrapperService service;
   final AccessCredentials credentials;
 
@@ -47,7 +47,7 @@ class ProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(product.id),
+              Text(product.providerId),
               Text(
                 product.name,
                 style: Theme.of(context).textTheme.titleMedium,
