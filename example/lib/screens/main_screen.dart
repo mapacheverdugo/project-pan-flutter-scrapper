@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/widget/local_connections.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +16,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final TextEditingController _publicKeyController = TextEditingController();
-  final TextEditingController _linkTokenController = TextEditingController();
+  final TextEditingController _linkWidgetTokenController =
+      TextEditingController();
   static const _storage = FlutterSecureStorage();
   static const _publicKeyStorageKey = 'public_key';
 
@@ -91,7 +94,7 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     _publicKeyController.removeListener(_onPublicKeyChanged);
     _publicKeyController.dispose();
-    _linkTokenController.dispose();
+    _linkWidgetTokenController.dispose();
     super.dispose();
   }
 
@@ -112,7 +115,7 @@ class _MainScreenState extends State<MainScreen> {
                       decoration: InputDecoration(
                         labelText: 'Public Key',
                         border: OutlineInputBorder(),
-                        hintText: 'Enter your public key',
+                        hintText: 'Enter your Public Key',
                         suffixIcon: _publicKeyController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.close),
@@ -132,18 +135,19 @@ class _MainScreenState extends State<MainScreen> {
               ),
               SizedBox(height: 16),
               TextField(
-                controller: _linkTokenController,
+                controller: _linkWidgetTokenController,
                 decoration: InputDecoration(
-                  labelText: 'Link Token',
+                  labelText: 'Link Widget Token',
                   border: OutlineInputBorder(),
-                  hintText: 'Enter your link token',
+                  hintText: 'Enter your Link Widget Token',
                 ),
               ),
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
                   final publicKey = _publicKeyController.text.trim();
-                  final linkToken = _linkTokenController.text.trim();
+                  final linkWidgetToken = _linkWidgetTokenController.text
+                      .trim();
 
                   if (publicKey.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -152,14 +156,22 @@ class _MainScreenState extends State<MainScreen> {
                     return;
                   }
 
-                  if (linkToken.isEmpty) {
+                  if (linkWidgetToken.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Link Token is required')),
+                      SnackBar(content: Text('Link Widget Token is required')),
                     );
                     return;
                   }
 
-                  await PanConnect.launch(context, publicKey, linkToken);
+                  await PanConnect.launch(
+                    context,
+                    publicKey,
+                    linkWidgetToken,
+                    onSuccess: (exchangeToken, username) {
+                      log('exchangeToken: $exchangeToken');
+                      log('username: $username');
+                    },
+                  );
                 },
                 child: Text('Launch'),
               ),

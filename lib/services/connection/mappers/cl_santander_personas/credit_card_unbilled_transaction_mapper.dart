@@ -21,7 +21,8 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
     return countryMap[iso3Letter.toUpperCase()];
   }
 
-  static List<ExtractedTransaction> fromUnbilledTransactionResponseModel(
+  static List<ExtractedTransactionWithoutProviderId>
+  fromUnbilledTransactionResponseModel(
     ClSantanderPersonasCreditCardUnbilledTransactionResponseModel model,
   ) {
     final matriz = model
@@ -34,7 +35,7 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
       return [];
     }
 
-    final transactions = <ExtractedTransaction>[];
+    final transactions = <ExtractedTransactionWithoutProviderId>[];
 
     for (final tx in matriz) {
       try {
@@ -95,7 +96,7 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
         final city = nullIfEmpty(tx.ciudad);
 
         transactions.add(
-          ExtractedTransaction(
+          ExtractedTransactionWithoutProviderId(
             description: description,
             amount: amount,
             billingCurrencyType: billingCurrencyType,

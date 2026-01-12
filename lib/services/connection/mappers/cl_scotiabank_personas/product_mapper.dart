@@ -158,12 +158,10 @@ class ClScotiabankPersonasProductMapper {
   static final _nationalOptions = AmountParseOptions(
     thousandSeparator: '.',
     decimalSeparator: ',',
-    currencyDecimals: 0,
   );
 
   static final _internationalOptions = AmountParseOptions(
     thousandSeparator: '.',
     decimalSeparator: ',',
-    currencyDecimals: 2,
   );
 }

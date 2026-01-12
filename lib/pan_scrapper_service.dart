@@ -124,9 +124,8 @@ class PanScrapperService {
     return authenticatedWrapper(connection.id, _client.getProducts);
   }
 
-  Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
-    String productId,
-  ) async {
+  Future<List<ExtractedTransactionWithoutProviderId>>
+  getDepositaryAccountTransactions(String productId) async {
     return authenticatedWrapper(
       connection.id,
       (credentials) =>
@@ -154,7 +153,8 @@ class PanScrapperService {
     );
   }
 
-  Future<List<ExtractedTransaction>> getCreditCardUnbilledTransactions(
+  Future<List<ExtractedTransactionWithoutProviderId>>
+  getCreditCardUnbilledTransactions(
     String productId,
     CurrencyType transactionType,
   ) async {

@@ -8,8 +8,10 @@ import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/credit_card_unbilled_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_banco_chile_personas/product_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/common.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/index.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
 
@@ -319,7 +321,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
             ).toIso8601String()
           : null;
 
-      return await _getDepositaryAccountTransactionsByDate(
+      final transactions = await _getDepositaryAccountTransactionsByDate(
         credentials,
         rawProducts.nombre ?? '',
         rawProducts.rut ?? '',
@@ -327,6 +329,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         startDate,
         endDate,
       );
+
+      return CommonsMapper.processTransactions(transactions);
     } catch (e) {
       log('Error fetching BancoChile depositary account transactions: $e');
       rethrow;
@@ -385,7 +389,8 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   }
 
   /// Gets depositary account transactions by date range
-  Future<List<ExtractedTransaction>> _getDepositaryAccountTransactionsByDate(
+  Future<List<ExtractedTransactionWithoutProviderId>>
+  _getDepositaryAccountTransactionsByDate(
     String cookiesString,
     String nombreCliente,
     String rutCliente,
@@ -647,9 +652,73 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
     CurrencyType transactionType,
-  ) {
-    // TODO: implement getCreditCardUnbilledTransactions
-    throw UnimplementedError();
+  ) async {
+    try {
+      final rawProducts = await _getRawProducts(credentials);
+      final rawProductId =
+          productId; // BancoChile productId is just the card ID
+
+      final card = rawProducts.productos.firstWhere(
+        (card) => card.id == rawProductId,
+        orElse: () => throw Exception('Card not found'),
+      );
+
+      final requestBody = {
+        'idTarjeta': card.id,
+        'codigoProducto': card.codigo,
+        'tipoTarjeta': card.descripcionLogo,
+        'mascara': card.mascara,
+        'nombreTitular': card.tarjetaHabiente,
+        'tipoCliente': (card.tipoCliente ?? '').toUpperCase().isNotEmpty
+            ? (card.tipoCliente ?? '').toUpperCase().substring(0, 1)
+            : '',
+      };
+
+      final response = await _dio.post(
+        'https://portalpersonas.bancochile.cl/mibancochile/rest/persona/tarjeta-credito-digital/movimientos-no-facturados',
+        data: requestBody,
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+                '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'es-ES,es;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://portalpersonas.bancochile.cl/',
+            'Cookie': credentials,
+          },
+        ),
+      );
+
+      _checkDioResponse(response);
+
+      final responseData = response.data as Map<String, dynamic>?;
+      if (responseData == null) {
+        throw Exception('Empty response from unbilled transactions API');
+      }
+
+      final unbilledModel =
+          ClBancoChilePersonasMovimientosNoFacturadosModel.fromJson(
+            responseData,
+          );
+
+      final transactions =
+          ClBancoChilePersonasCreditCardUnbilledTransactionMapper.fromUnbilledTransactionModel(
+            unbilledModel,
+          );
+
+      final filteredTransactions = transactions
+          .where(
+            (transaction) => transaction.billingCurrencyType == transactionType,
+          )
+          .toList();
+
+      return CommonsMapper.processTransactions(filteredTransactions);
+    } catch (e) {
+      log('Error fetching BancoChile credit card unbilled transactions: $e');
+      rethrow;
+    }
   }
 
   Future<void> _checkDioResponse(Response<dynamic> response) async {

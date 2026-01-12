@@ -25,11 +25,18 @@ class ConnectionDetailsScreen extends StatefulWidget {
 class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
   List<ExtractedProductModel> _products = [];
   bool _isLoading = false;
+  final TextEditingController _linkTokenController = TextEditingController();
 
   late final PanScrapperService service = PanScrapperService(
     context: context,
     connection: widget.connection,
   );
+
+  @override
+  void dispose() {
+    _linkTokenController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +59,15 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                 ),
                 contentPadding: EdgeInsets.zero,
               ),
+              TextField(
+                controller: _linkTokenController,
+                decoration: InputDecoration(
+                  labelText: 'Link Token',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter your link token',
+                ),
+              ),
+              SizedBox(height: 16),
               ListTile(
                 title: Text(
                   'Connection ID: ${widget.connection.id}',
@@ -60,9 +76,16 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                 contentPadding: EdgeInsets.zero,
                 trailing: ElevatedButton(
                   onPressed: () {
+                    final linkToken = _linkTokenController.text.trim();
+                    if (linkToken.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Link Token is required')),
+                      );
+                      return;
+                    }
                     PanConnect.syncLocalConnection(
                       context,
-                      widget.connection,
+                      linkToken,
                       widget.publicKey,
                     );
                   },

@@ -77,9 +77,7 @@ class ClBancoChilePersonasProductMapper {
           final currency = cupo.moneda == r'$'
               ? Currency.clp
               : Currency.fromIsoLetters(cupo.moneda);
-          final options = currency == Currency.clp
-              ? _nationalOptions
-              : _internationalOptions;
+          final options = _amountParseOptions;
 
           final creditLimit = Amount.tryParse(
             cupo.cupo.toString(),
@@ -117,19 +115,19 @@ class ClBancoChilePersonasProductMapper {
           availableAmount = Amount.tryParse(
             depositaryBalance.disponible.toString(),
             currency,
-            options: _nationalOptions,
+            options: _amountParseOptions,
           );
         } else {
           final available = Amount.tryParse(
             depositaryBalance.disponible.toString(),
             currency,
-            options: _nationalOptions,
+            options: _amountParseOptions,
           );
 
           final creditLimit = Amount.tryParse(
             depositaryBalance.cupo.toString(),
             currency,
-            options: _nationalOptions,
+            options: _amountParseOptions,
           );
 
           if (creditLimit != null && available != null) {
@@ -173,15 +171,8 @@ class ClBancoChilePersonasProductMapper {
     return productList;
   }
 
-  static final _nationalOptions = AmountParseOptions(
+  static final _amountParseOptions = AmountParseOptions(
     thousandSeparator: null,
     decimalSeparator: '.',
-    currencyDecimals: 0,
-  );
-
-  static final _internationalOptions = AmountParseOptions(
-    thousandSeparator: null,
-    decimalSeparator: '.',
-    currencyDecimals: 2,
   );
 }

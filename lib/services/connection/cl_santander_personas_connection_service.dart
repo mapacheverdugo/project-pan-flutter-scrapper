@@ -14,6 +14,7 @@ import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_santander_personas/depositary_account_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_santander_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_santander_personas/tarjetas_de_credito_consulta_ultimos_movimientos_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/common.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
 
@@ -362,7 +363,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         productId,
       );
 
-      final transactions = <ExtractedTransaction>[];
+      final transactions = <ExtractedTransactionWithoutProviderId>[];
 
       // Get raw products to find currency
       final rawProducts = await _getRawProducts(
@@ -424,7 +425,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         }
       } while (shouldContinue);
 
-      return transactions;
+      return CommonsMapper.processTransactions(transactions);
     } catch (e) {
       log('Error fetching depositary account transactions: $e');
       rethrow;
@@ -798,10 +799,13 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
             responseData,
           );
 
-      return ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper.fromResponseModel(
-        model,
-        transactionType,
-      );
+      final transactions =
+          ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper.fromResponseModel(
+            model,
+            transactionType,
+          );
+
+      return CommonsMapper.processTransactions(transactions);
     } catch (e) {
       log('Error fetching credit card unbilled transactions: $e');
       rethrow;

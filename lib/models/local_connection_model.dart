@@ -8,14 +8,12 @@ part 'local_connection_model.g.dart';
 class LocalConnectionModel {
   final String id;
   final InstitutionCode institutionCode;
-  final String usernameHash;
   final String rawUsername;
   final String password;
 
   LocalConnectionModel({
     required this.id,
     required this.institutionCode,
-    required this.usernameHash,
     required this.rawUsername,
     required this.password,
   });
@@ -27,7 +25,6 @@ class LocalConnectionModel {
       LocalConnectionModel(
         id: connection.id,
         institutionCode: connection.institutionCode,
-        usernameHash: connection.usernameHash,
         rawUsername: connection.rawUsername,
         password: connection.password,
       );
@@ -37,7 +34,6 @@ class LocalConnectionModel {
   LocalConnection toEntity() => LocalConnection(
     id: id,
     institutionCode: institutionCode,
-    usernameHash: usernameHash,
     rawUsername: rawUsername,
     password: password,
   );

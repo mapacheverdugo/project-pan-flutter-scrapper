@@ -254,14 +254,12 @@ class ClSantanderPersonasProductMapper {
     factor: 100,
     thousandSeparator: null,
     decimalSeparator: null,
-    currencyDecimals: 0,
   );
 
   static final _internationalOptions = AmountParseOptions(
     factor: 1,
     thousandSeparator: null,
     decimalSeparator: null,
-    currencyDecimals: 2,
   );
 }
 

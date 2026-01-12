@@ -6,7 +6,7 @@ class CreditCardBill {
   final String periodId;
   final CurrencyType currencyType;
   final CreditCardBillSummary summary;
-  final List<ExtractedTransaction> transactions;
+  final List<ExtractedTransactionWithoutProviderId> transactions;
 
   CreditCardBill({
     required this.periodId,

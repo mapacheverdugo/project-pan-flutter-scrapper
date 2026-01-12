@@ -14,7 +14,6 @@ LocalConnectionModel _$LocalConnectionModelFromJson(
     _$InstitutionCodeEnumMap,
     json['institutionCode'],
   ),
-  usernameHash: json['usernameHash'] as String,
   rawUsername: json['rawUsername'] as String,
   password: json['password'] as String,
 );
@@ -24,7 +23,6 @@ Map<String, dynamic> _$LocalConnectionModelToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'institutionCode': _$InstitutionCodeEnumMap[instance.institutionCode]!,
-  'usernameHash': instance.usernameHash,
   'rawUsername': instance.rawUsername,
   'password': instance.password,
 };

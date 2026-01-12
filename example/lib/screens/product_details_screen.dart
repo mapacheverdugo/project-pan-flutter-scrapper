@@ -17,7 +17,7 @@ class ProductDetailsScreen extends StatefulWidget {
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
-  List<ExtractedTransaction> _transactions = [];
+  List<ExtractedTransactionWithoutProviderId> _transactions = [];
   List<ExtractedCreditCardBillPeriod> _periods = [];
   bool _isLoadingTransactions = false;
   bool _isLoadingPeriods = false;

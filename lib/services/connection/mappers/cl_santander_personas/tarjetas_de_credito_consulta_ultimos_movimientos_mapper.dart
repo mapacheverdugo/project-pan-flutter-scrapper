@@ -7,7 +7,7 @@ import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
-  static List<ExtractedTransaction> fromResponseModel(
+  static List<ExtractedTransactionWithoutProviderId> fromResponseModel(
     ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosResponseModel
     model,
     CurrencyType transactionType,
@@ -21,7 +21,7 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
     final currency = transactionType == CurrencyType.national
         ? Currency.clp
         : Currency.usd;
-    final transactions = <ExtractedTransaction>[];
+    final transactions = <ExtractedTransactionWithoutProviderId>[];
 
     for (final movimiento in matriz) {
       try {
@@ -85,7 +85,7 @@ class ClSantanderPersonasTarjetasDeCreditoConsultaUltimosMovimientosMapper {
         final ciudad = nullIfEmpty(movimiento.ciudad);
 
         transactions.add(
-          ExtractedTransaction(
+          ExtractedTransactionWithoutProviderId(
             description: description,
             amount: amount,
             billingCurrencyType: transactionType,

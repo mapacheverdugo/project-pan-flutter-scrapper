@@ -4,7 +4,7 @@ import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_santander_personas/index.dart';
 
 class ClSantanderPersonasDepositaryAccountTransactionMapper {
-  static List<ExtractedTransaction> fromResponseModel(
+  static List<ExtractedTransactionWithoutProviderId> fromResponseModel(
     ClSantanderPersonasDepositaryAccountTransactionResponseModel model,
     Currency productCurrency,
   ) {
@@ -12,7 +12,7 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
       return [];
     }
 
-    final transactions = <ExtractedTransaction>[];
+    final transactions = <ExtractedTransactionWithoutProviderId>[];
 
     for (final movement in model.movements) {
       try {
@@ -42,7 +42,7 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
         }
 
         transactions.add(
-          ExtractedTransaction(
+          ExtractedTransactionWithoutProviderId(
             description: description,
             amount: amount,
             transactionDate: transactionDate,

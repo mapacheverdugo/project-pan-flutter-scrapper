@@ -6,7 +6,7 @@ import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/cartola_model.dart';
 
 class ClBancoChilePersonasDepositaryTransactionMapper {
-  static List<ExtractedTransaction> fromCartolaModel(
+  static List<ExtractedTransactionWithoutProviderId> fromCartolaModel(
     ClBancoChilePersonasCartolaModel model,
   ) {
     if (model.movimientos.isEmpty) {
@@ -18,7 +18,7 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
         ? Currency.clp
         : Currency.fromIsoLetters(model.moneda ?? 'CLP');
 
-    final transactions = <ExtractedTransaction>[];
+    final transactions = <ExtractedTransactionWithoutProviderId>[];
 
     for (final movimiento in model.movimientos) {
       try {
@@ -80,7 +80,7 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
         );
 
         transactions.add(
-          ExtractedTransaction(
+          ExtractedTransactionWithoutProviderId(
             description: description,
             amount: amount,
             transactionDate: transactionDate,

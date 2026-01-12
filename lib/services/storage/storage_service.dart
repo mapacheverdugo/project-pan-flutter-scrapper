@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:collection/collection.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pan_scrapper/constants/storage_keys.dart';
 import 'package:pan_scrapper/models/local_connection_model.dart';
@@ -10,6 +11,8 @@ abstract class StorageService {
     LocalConnectionModel connection,
   );
   Future<List<LocalConnectionModel>> getSavedConnections();
+  Future<LocalConnectionModel?> getConnectionById(String id);
+  Future<bool> hasConnections();
   Future<void> deleteConnection(String id);
 
   Future<void> saveConnectionCredentials(
@@ -56,6 +59,18 @@ class StorageServiceImpl extends StorageService {
     }
 
     return currentConnections;
+  }
+
+  @override
+  Future<LocalConnectionModel?> getConnectionById(String id) async {
+    final currentConnections = await getSavedConnections();
+    return currentConnections.firstWhereOrNull((e) => e.id == id);
+  }
+
+  @override
+  Future<bool> hasConnections() async {
+    final currentConnections = await getSavedConnections();
+    return currentConnections.isNotEmpty;
   }
 
   @override

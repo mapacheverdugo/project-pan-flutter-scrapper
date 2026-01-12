@@ -63,7 +63,6 @@ class ClItauPersonasProductMapper {
       options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
-        currencyDecimals: isUsd ? 2 : 0,
       ),
     );
 
@@ -104,7 +103,6 @@ class ClItauPersonasProductMapper {
             options: AmountParseOptions(
               thousandSeparator: '.',
               decimalSeparator: ',',
-              currencyDecimals: 0,
             ),
           ).value
         : null;
@@ -163,7 +161,6 @@ class ClItauPersonasProductMapper {
       options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
-        currencyDecimals: currency == 'USD' ? 2 : 0,
       ),
     );
 
@@ -219,7 +216,6 @@ class ClItauPersonasProductMapper {
       options: AmountParseOptions(
         thousandSeparator: '.',
         decimalSeparator: ',',
-        currencyDecimals: 0,
       ),
     );
 
@@ -281,7 +277,6 @@ class ClItauPersonasProductMapper {
         options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
-          currencyDecimals: 0,
         ),
       ).value;
 
@@ -344,7 +339,6 @@ class ClItauPersonasProductMapper {
         options: AmountParseOptions(
           thousandSeparator: '.',
           decimalSeparator: ',',
-          currencyDecimals: currencyDecimals,
         ),
       );
     }

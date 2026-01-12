@@ -2,26 +2,30 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:pan_scrapper/entities/execute_response.dart';
 import 'package:pan_scrapper/entities/extraction.dart';
 import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
-import 'package:pan_scrapper/models/execute_link_token_result_model.dart';
 import 'package:pan_scrapper/models/institution_model.dart';
 import 'package:pan_scrapper/models/link_intent_model.dart';
 
 abstract class ApiService {
   Future<List<InstitutionModel>> fetchInstitutions({required String publicKey});
   Future<LinkIntentResponseModel> fetchLinkIntent({
-    required String linkToken,
+    required String linkWidgetToken,
     required String publicKey,
   });
-  Future<ExecuteLinkTokenResultModel> executeLinkToken({
-    required String linkToken,
+  Future<ExecuteResponse> executeLinkWidgetToken({
+    required String linkWidgetToken,
     required ExtractedConnectionResultModel connectionResult,
+    required String publicKey,
+  });
+  Future<String> validateLinkToken({
+    required String linkToken,
     required String publicKey,
   });
   Future<void> submitExtractions({
     required List<Extraction> extractions,
-    required String connectionId,
+    required String linkToken,
     required String publicKey,
   });
 }
@@ -92,7 +96,7 @@ class ApiServiceImpl extends ApiService {
   @override
   /// Fetches the current link intent from the API
   Future<LinkIntentResponseModel> fetchLinkIntent({
-    required String linkToken,
+    required String linkWidgetToken,
     required String publicKey,
   }) async {
     try {
@@ -101,7 +105,7 @@ class ApiServiceImpl extends ApiService {
         options: Options(
           headers: {
             'Content-Type': 'application/json',
-            'X-Link-Widget-Token': linkToken,
+            'X-Link-Widget-Token': linkWidgetToken,
             'Authorization': 'Bearer $publicKey',
           },
         ),
@@ -124,8 +128,8 @@ class ApiServiceImpl extends ApiService {
   }
 
   @override
-  Future<ExecuteLinkTokenResultModel> executeLinkToken({
-    required String linkToken,
+  Future<ExecuteResponse> executeLinkWidgetToken({
+    required String linkWidgetToken,
     required ExtractedConnectionResultModel connectionResult,
     required String publicKey,
   }) async {
@@ -139,7 +143,7 @@ class ApiServiceImpl extends ApiService {
       options: Options(
         headers: {
           'Content-Type': 'application/json',
-          'X-Link-Widget-Token': linkToken,
+          'X-Link-Widget-Token': linkWidgetToken,
           'Authorization': 'Bearer $publicKey',
         },
       ),
@@ -150,19 +154,40 @@ class ApiServiceImpl extends ApiService {
       throw Exception('Empty response from execute link token API');
     }
 
-    return ExecuteLinkTokenResultModel.fromJson(data);
+    return ExecuteResponse.fromJson(data);
+  }
+
+  @override
+  Future<String> validateLinkToken({
+    required String linkToken,
+    required String publicKey,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_baseUrl/api/link-tokens/validate',
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Link-Token': linkToken,
+          'Authorization': 'Bearer $publicKey',
+        },
+      ),
+    );
+
+    final data = response.data?['data'];
+    if (data == null) {
+      throw Exception('Empty response from validate link token API');
+    }
+
+    return data;
   }
 
   @override
   Future<void> submitExtractions({
     required List<Extraction> extractions,
     required String publicKey,
-    required String connectionId,
+    required String linkToken,
   }) async {
-    final body = {
-      'extractions': extractions.map((e) => e.toJson()).toList(),
-      'connectionId': connectionId,
-    };
+    final body = {'extractions': extractions.map((e) => e.toJson()).toList()};
 
     log('submitExtractions body: ${jsonEncode(body)}');
 
@@ -173,6 +198,7 @@ class ApiServiceImpl extends ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $publicKey',
+          'X-Link-Token': linkToken,
         },
       ),
     );

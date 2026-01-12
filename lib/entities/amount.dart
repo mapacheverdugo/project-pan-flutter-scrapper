@@ -12,7 +12,7 @@ class Amount {
     options ??= AmountParseOptions();
     final thousandSeparator = options.thousandSeparator;
     final decimalSeparator = options.decimalSeparator;
-    final currencyDecimals = options.currencyDecimals;
+    final currencyDecimals = currency.decimalDigits;
     final factor = options.factor;
 
     text = _removeEverythingButNumberSymbols(text);
@@ -36,7 +36,11 @@ class Amount {
     if (decimalSeparator != null && decimalSeparator.isNotEmpty) {
       final numberParts = text.split(decimalSeparator);
       final integerPart = numberParts[0];
-      final decimalPart = numberParts.length > 1 ? numberParts[1] : '';
+      var decimalPart = numberParts.length > 1 ? numberParts[1] : '';
+
+      if (decimalPart.length > currencyDecimals) {
+        decimalPart = decimalPart.substring(0, currencyDecimals);
+      }
 
       final paddedDecimalPart = decimalPart.padRight(currencyDecimals, '0');
 
@@ -44,7 +48,10 @@ class Amount {
     }
 
     final value = num.tryParse('$explicitSymbol$text');
-    final finalValue = value != null ? value * (1 / factor) : null;
+    final invertedFactor = options.invertSign ? -1 : 1;
+    final finalValue = value != null
+        ? value * (1 / factor) * invertedFactor
+        : null;
 
     return Amount(currency: currency, value: finalValue?.toInt() ?? 0);
   }
@@ -77,12 +84,12 @@ class AmountParseOptions {
   final double factor;
   final String? thousandSeparator;
   final String? decimalSeparator;
-  final int currencyDecimals;
+  final bool invertSign;
 
   AmountParseOptions({
     this.factor = 1,
     this.thousandSeparator = ',',
     this.decimalSeparator = '.',
-    this.currencyDecimals = 0,
+    this.invertSign = false,
   });
 }

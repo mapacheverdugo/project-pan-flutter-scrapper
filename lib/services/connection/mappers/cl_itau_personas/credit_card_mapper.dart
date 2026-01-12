@@ -21,70 +21,51 @@ class ClItauPersonasCreditCardMapper {
           ? selectedOption!.attributes['value']!.trim()
           : (meta.cardLast4Digits ?? meta.name);
 
+      final amountParseOptions = AmountParseOptions(
+        thousandSeparator: '.',
+        decimalSeparator: ',',
+      );
+
       final availableClp = _readAmount(
         doc,
         selector: '#CupoDisponiblePesos',
         currency: Currency.clp,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 0,
-        ),
+        options: amountParseOptions,
       );
 
       final usedClp = _readAmount(
         doc,
         selector: '#DeudaNacional',
         currency: Currency.clp,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 0,
-        ),
+        options: amountParseOptions,
       );
 
       final totalClp = _readAmount(
         doc,
         selector: '#CupoTotalNacional',
         currency: Currency.clp,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 0,
-        ),
+        options: amountParseOptions,
       );
 
       final availableUsd = _readAmount(
         doc,
         selector: '#CupoDisponibleDolar',
         currency: Currency.usd,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 2,
-        ),
+        options: amountParseOptions,
       );
 
       final usedUsd = _readAmount(
         doc,
         selector: '#DeudaInternacional',
         currency: Currency.usd,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 2,
-        ),
+        options: amountParseOptions,
       );
 
       final totalUsd = _readAmount(
         doc,
         selector: '#CupoTotalInternacional',
         currency: Currency.usd,
-        options: AmountParseOptions(
-          thousandSeparator: '.',
-          decimalSeparator: ',',
-          currencyDecimals: 2,
-        ),
+        options: amountParseOptions,
       );
 
       final creditBalances = <ExtractedCreditBalance>[];

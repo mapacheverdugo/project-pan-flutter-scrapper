@@ -36,8 +36,9 @@ class PanConnect {
   static Future<void> launch(
     BuildContext context,
     String publicKey,
-    String linkToken,
-  ) async {
+    String linkWidgetToken, {
+    void Function(String exchangeToken, String username)? onSuccess,
+  }) async {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
 
@@ -46,7 +47,10 @@ class PanConnect {
 
       final results = await Future.wait([
         apiService.fetchInstitutions(publicKey: publicKey),
-        apiService.fetchLinkIntent(linkToken: linkToken, publicKey: publicKey),
+        apiService.fetchLinkIntent(
+          linkWidgetToken: linkWidgetToken,
+          publicKey: publicKey,
+        ),
       ]);
 
       if (context.mounted) {
@@ -88,8 +92,9 @@ class PanConnect {
                     await _saveConnection(
                       connection: connection,
                       password: password,
-                      linkToken: linkToken,
+                      linkWidgetToken: linkWidgetToken,
                       publicKey: publicKey,
+                      onSuccess: onSuccess,
                     );
                     if (context.mounted) {
                       Navigator.of(context).pop();
@@ -125,33 +130,33 @@ class PanConnect {
     }
   }
 
-  static Future<List<LocalConnection>> _saveConnection({
+  static Future<void> _saveConnection({
     required ExtractedConnectionResultModel connection,
-    required String linkToken,
+    required String linkWidgetToken,
     required String publicKey,
     required String password,
+    void Function(String exchangeToken, String username)? onSuccess,
   }) async {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
     final storage = StorageServiceImpl();
 
-    final executeLinkTokenResult = await apiService.executeLinkToken(
-      linkToken: linkToken,
+    final executeLinkTokenResult = await apiService.executeLinkWidgetToken(
+      linkWidgetToken: linkWidgetToken,
       connectionResult: connection,
       publicKey: publicKey,
     );
 
     final newConnection = LocalConnectionModel(
-      id: executeLinkTokenResult.connectionId,
+      id: executeLinkTokenResult.id,
       institutionCode: connection.institutionCode,
-      usernameHash: executeLinkTokenResult.usernameHash,
       rawUsername: connection.username,
       password: password,
     );
 
-    final newConnections = await storage.saveNewConnection(newConnection);
+    await storage.saveNewConnection(newConnection);
 
-    return newConnections.map((e) => e.toEntity()).toList();
+    onSuccess?.call(executeLinkTokenResult.exchangeToken, connection.username);
   }
 
   static Future<List<LocalConnection>> getSavedConnections() async {
@@ -162,14 +167,34 @@ class PanConnect {
 
   static Future<void> syncLocalConnection(
     BuildContext context,
-    LocalConnection connection,
+    String linkToken,
     String publicKey,
   ) async {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
+    final storage = StorageServiceImpl();
+
+    final connectionId = await apiService.validateLinkToken(
+      linkToken: linkToken,
+      publicKey: publicKey,
+    );
+
+    final hasConnections = await storage.hasConnections();
+    if (!hasConnections) {
+      throw Exception('No connections found');
+    }
+
+    final connection = await storage.getConnectionById(connectionId);
+
+    if (connection == null) {
+      throw Exception('Connection not found');
+    }
+
+    if (!context.mounted) return;
+
     final panScrapperService = PanScrapperService(
       context: context,
-      connection: connection,
+      connection: connection.toEntity(),
     );
 
     final extractions = <Extraction>[];
@@ -253,7 +278,7 @@ class PanConnect {
     await apiService.submitExtractions(
       extractions: extractions,
       publicKey: publicKey,
-      connectionId: connection.id,
+      linkToken: linkToken,
     );
   }
 }

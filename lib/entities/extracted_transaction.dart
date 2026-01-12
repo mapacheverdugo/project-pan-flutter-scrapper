@@ -8,7 +8,7 @@ import 'package:pan_scrapper/entities/extracted_transaction_installments.dart';
 part 'extracted_transaction.g.dart';
 
 @JsonSerializable(explicitToJson: true, converters: [AmountJsonConverter()])
-class ExtractedTransaction {
+class ExtractedTransactionWithoutProviderId {
   final String description;
   final Amount amount;
   final String? transactionDate;
@@ -21,7 +21,7 @@ class ExtractedTransaction {
   final BillingStatus? billingStatus;
   final ExtractedTransactionInstallments? installments;
 
-  ExtractedTransaction({
+  ExtractedTransactionWithoutProviderId({
     required this.description,
     required this.amount,
     required this.transactionDate,
@@ -33,6 +33,30 @@ class ExtractedTransaction {
     this.billingCurrencyType,
     this.billingStatus,
     this.installments,
+  });
+
+  factory ExtractedTransactionWithoutProviderId.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ExtractedTransactionWithoutProviderIdFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$ExtractedTransactionWithoutProviderIdToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, converters: [AmountJsonConverter()])
+class ExtractedTransaction extends ExtractedTransactionWithoutProviderId {
+  final String providerId;
+
+  ExtractedTransaction({
+    required this.providerId,
+    required super.description,
+    required super.amount,
+    required super.transactionDate,
+    required super.transactionTime,
+    required super.processingDate,
+    required super.originalAmount,
+    required super.city,
+    required super.country,
   });
 
   factory ExtractedTransaction.fromJson(Map<String, dynamic> json) =>

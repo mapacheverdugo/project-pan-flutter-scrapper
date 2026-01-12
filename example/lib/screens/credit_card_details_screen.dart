@@ -27,8 +27,8 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
   late TabController _tabController;
   String? _selectedNationalPeriodId;
   String? _selectedInternationalPeriodId;
-  List<ExtractedTransaction> _nationalTransactions = [];
-  List<ExtractedTransaction> _internationalTransactions = [];
+  List<ExtractedTransactionWithoutProviderId> _nationalTransactions = [];
+  List<ExtractedTransactionWithoutProviderId> _internationalTransactions = [];
   bool _isLoadingNationalTransactions = false;
   bool _isLoadingInternationalTransactions = false;
   int _previousTabIndex = 0;
