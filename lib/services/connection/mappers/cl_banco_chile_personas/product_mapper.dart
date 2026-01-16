@@ -6,6 +6,8 @@ import 'package:pan_scrapper/models/connection/credit_balance.dart';
 import 'package:pan_scrapper/models/connection/product.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/index.dart';
 
+import '../../../../helpers/string_helpers.dart';
+
 class ClBancoChilePersonasProductMapper {
   static CardBrand _getCardBrand(String label) {
     if (label.toLowerCase().contains('visa')) {
@@ -150,10 +152,12 @@ class ClBancoChilePersonasProductMapper {
           ? mascara.substring(mascara.length - 4)
           : mascara;
 
+      final number = nullIfEmpty(producto.numero);
+
       productList.add(
         ExtractedProductModel(
           providerId: productId,
-          number: productId,
+          number: number ?? mascara,
           name: producto.descripcionLogo?.trim() ?? producto.label.trim(),
           type: productType,
           cardLast4Digits: productType == ProductType.creditCard

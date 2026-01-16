@@ -18,12 +18,8 @@ ExtractedCreditBalance _$ExtractedCreditBalanceFromJson(
 Map<String, dynamic> _$ExtractedCreditBalanceToJson(
   ExtractedCreditBalance instance,
 ) => <String, dynamic>{
-  'creditLimitAmount': const AmountJsonConverter().toJson(
-    instance.creditLimitAmount,
-  ),
+  'creditLimitAmount': instance.creditLimitAmount,
   'currency': const CurrencyJsonConverter().toJson(instance.currency),
-  'availableAmount': const AmountJsonConverter().toJson(
-    instance.availableAmount,
-  ),
-  'usedAmount': const AmountJsonConverter().toJson(instance.usedAmount),
+  'availableAmount': instance.availableAmount,
+  'usedAmount': instance.usedAmount,
 };

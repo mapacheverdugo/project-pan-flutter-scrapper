@@ -33,7 +33,7 @@ class ProductCard extends StatelessWidget {
       return creditBalances
           .map(
             (creditBalance) =>
-                creditBalance.availableAmount.formattedDependingOnCurrency,
+                creditBalance.availableAmountModel.formattedDependingOnCurrency,
           )
           .join(' | ');
     }

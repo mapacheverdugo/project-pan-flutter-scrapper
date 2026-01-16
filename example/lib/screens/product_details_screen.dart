@@ -1,4 +1,5 @@
 import 'package:example/widget/period_card.dart';
+import 'package:example/widget/transaction_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
@@ -74,27 +75,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     physics: NeverScrollableScrollPhysics(),
                     itemCount: _transactions.length,
                     itemBuilder: (context, index) {
-                      return Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _transactions[index].description,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Amount: ${_transactions[index].amount.formattedDependingOnCurrency} ${_transactions[index].amount.currency}',
-                              ),
-                              if (_transactions[index].transactionDate != null)
-                                Text(
-                                  'Date: ${_transactions[index].transactionDate}',
-                                ),
-                            ],
-                          ),
-                        ),
+                      return TransactionListItem(
+                        transaction: _transactions[index],
                       );
                     },
                   ),

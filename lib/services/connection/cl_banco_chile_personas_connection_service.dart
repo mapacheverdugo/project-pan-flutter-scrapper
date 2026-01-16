@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 
@@ -47,15 +48,36 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         ),
         (request) async {
           final status = request.status;
+          final response = request.responseText;
+
+          var responseJson;
+          try {
+            responseJson = response != null ? jsonDecode(response) : null;
+          } catch (e) {
+            log('Error decoding response: $e');
+          }
+
           if (status != null) {
             if (status == 429) {
               if (!completer.isCompleted) {
-                completer.completeError(Exception('Credentials blocked'));
+                completer.completeError(
+                  ConnectionException(ConnectionExceptionType.authBlocked),
+                );
+              }
+            } else if (status == 401 &&
+                responseJson != null &&
+                responseJson['code'] == 'invalid_user_password') {
+              if (!completer.isCompleted) {
+                completer.completeError(
+                  ConnectionException(
+                    ConnectionExceptionType.invalidLoginCredentials,
+                  ),
+                );
               }
             } else if (status >= 400) {
               if (!completer.isCompleted) {
                 completer.completeError(
-                  Exception('Auth detected after password'),
+                  ConnectionException(ConnectionExceptionType.unknown),
                 );
               }
             }

@@ -5,7 +5,8 @@ import 'package:pan_scrapper/helpers/string_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_banco_chile_personas/movimientos_no_facturados_model.dart';
 
 class ClBancoChilePersonasCreditCardUnbilledTransactionMapper {
-  static List<ExtractedTransactionWithoutProviderId> fromUnbilledTransactionModel(
+  static List<ExtractedTransactionWithoutProviderId>
+  fromUnbilledTransactionModel(
     ClBancoChilePersonasMovimientosNoFacturadosModel model,
   ) {
     if (model.listaMovNoFactur.isEmpty) {

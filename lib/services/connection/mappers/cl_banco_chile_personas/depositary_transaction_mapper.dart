@@ -1,4 +1,5 @@
-import 'package:pan_scrapper/entities/amount.dart';
+import 'dart:developer';
+
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
@@ -28,19 +29,28 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
         }
 
         // Parse transaction date and time from fecha (YYYYMMDDHHmmSS format)
-        final fechaDatePart = fecha.length >= 8 ? fecha.substring(0, 8) : fecha;
-        final transactionDate = tryGetIsoDateFromNoSeparatorYYYYMMDD(fechaDatePart);
+        final fechaParts = fecha.split(" ");
+        final fechaDatePart = fechaParts[0];
+        final transactionDate = tryGetIsoDateFromNoSeparatorYYYYMMDD(
+          fechaDatePart,
+        );
         if (transactionDate == null) {
           continue; // Skip transactions with invalid date
         }
 
         // Extract time from YYYYMMDDHHmmSS format (if available)
+        log(
+          'ClBancoChilePersonasDepositaryTransactionMapper fechaParts: $fechaParts',
+        );
         String? transactionTime;
-        if (fecha.length >= 14) {
+        if (fechaParts.length > 1) {
           // Extract HHmmSS from position 8-13
-          final timePart = fecha.substring(8, 14);
-          if (timePart.length == 6) {
-            transactionTime = '${timePart.substring(0, 2)}:${timePart.substring(2, 4)}:${timePart.substring(4, 6)}';
+          final timePart = fechaParts[1];
+          log(
+            'ClBancoChilePersonasDepositaryTransactionMapper timePart: $timePart ${timePart.length}',
+          );
+          if (timePart.length == 8) {
+            transactionTime = timePart;
           }
         }
 
@@ -49,7 +59,9 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
         String? processingDate;
         if (fechaContable != null && fechaContable.isNotEmpty) {
           try {
-            processingDate = getIsoDateFromSlashSeparatedDDMMYYYYDate(fechaContable);
+            processingDate = getIsoDateFromSlashSeparatedDDMMYYYYDate(
+              fechaContable,
+            );
           } catch (e) {
             // Skip if date parsing fails
             processingDate = null;
@@ -71,13 +83,12 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
         }
 
         // Apply sign based on tipo: 'abono' = positive, otherwise negative
-        final signedAmount = movimiento.tipo == 'abono' ? amountValue : -amountValue;
+        final signedAmount = movimiento.tipo == 'abono'
+            ? amountValue
+            : -amountValue;
 
         // Create Amount object - CLP uses factor 1, other currencies might need different handling
-        final amount = Amount(
-          currency: currency,
-          value: signedAmount,
-        );
+        final amount = Amount(currency: currency, value: signedAmount);
 
         transactions.add(
           ExtractedTransactionWithoutProviderId(

@@ -1,5 +1,6 @@
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
+import 'package:example/widget/transaction_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
@@ -134,10 +135,11 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
           product.availableAmount?.formattedDependingOnCurrency ?? 'null',
           isOdd: true,
         ),
-        for (final creditBalance in product.creditBalances ?? []) ...[
+        for (final ExtractedCreditBalance creditBalance
+            in product.creditBalances ?? []) ...[
           _buildTableRow(
             'Credit Balance ${creditBalance.currency.isoLetters}',
-            creditBalance.availableAmount.formattedDependingOnCurrency,
+            creditBalance.availableAmountModel.formattedDependingOnCurrency,
             isOdd: product.creditBalances!.indexOf(creditBalance) % 2 != 0,
           ),
         ],
@@ -217,27 +219,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
           SizedBox(height: 20),
           if (_nationalTransactions.isNotEmpty)
             ..._nationalTransactions.map((transaction) {
-              return Card(
-                margin: EdgeInsets.only(bottom: 10),
-                child: Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        transaction.description,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Amount: ${transaction.amount.formattedDependingOnCurrency}',
-                      ),
-                      if (transaction.transactionDate != null)
-                        Text('Date: ${transaction.transactionDate}'),
-                    ],
-                  ),
-                ),
-              );
+              return TransactionListItem(transaction: transaction);
             }),
           if (_nationalTransactions.isEmpty &&
               !_isLoadingNationalTransactions &&
@@ -308,27 +290,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
           SizedBox(height: 20),
           if (_internationalTransactions.isNotEmpty)
             ..._internationalTransactions.map((transaction) {
-              return Card(
-                margin: EdgeInsets.only(bottom: 10),
-                child: Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        transaction.description,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Amount: ${transaction.amount.formattedDependingOnCurrency} ${transaction.amount.currency}',
-                      ),
-                      if (transaction.transactionDate != null)
-                        Text('Date: ${transaction.transactionDate}'),
-                    ],
-                  ),
-                ),
-              );
+              return TransactionListItem(transaction: transaction);
             }),
           if (_internationalTransactions.isEmpty &&
               !_isLoadingInternationalTransactions &&

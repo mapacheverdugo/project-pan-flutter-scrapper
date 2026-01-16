@@ -12,7 +12,9 @@ class ConnectionException implements Exception {
 }
 
 enum ConnectionExceptionType {
+  invalidLoginCredentials,
   invalidAuthCredentials,
   authBlocked,
   authCredentialsExpired,
+  unknown,
 }

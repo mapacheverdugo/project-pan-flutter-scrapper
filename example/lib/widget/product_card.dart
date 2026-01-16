@@ -46,25 +46,26 @@ class ProductCard extends StatelessWidget {
                   children: [
                     SizedBox(height: 4),
                     Text(
-                      'Disponible: ${product.availableAmount?.formattedDependingOnCurrency}',
+                      'Disponible: ${product.availableAmount?.formattedWithCurrency}',
                     ),
                   ],
                 ),
               ],
-              for (final creditBalance in product.creditBalances ?? []) ...[
+              for (final ExtractedCreditBalance creditBalance
+                  in product.creditBalances ?? []) ...[
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 4),
                     Text('Balance ${creditBalance.currency.isoLetters}:'),
                     Text(
-                      'Cupo: ${creditBalance.creditLimitAmount.formattedDependingOnCurrency}',
+                      'Cupo: ${creditBalance.creditLimitAmountModel.formattedWithCurrency}',
                     ),
                     Text(
-                      'Disponible: ${creditBalance.availableAmount.formattedDependingOnCurrency}',
+                      'Disponible: ${creditBalance.availableAmountModel.formattedWithCurrency}',
                     ),
                     Text(
-                      'Utilizado: ${creditBalance.usedAmount.formattedDependingOnCurrency}',
+                      'Utilizado: ${creditBalance.usedAmountModel.formattedWithCurrency}',
                     ),
                     SizedBox(height: 4),
                   ],
