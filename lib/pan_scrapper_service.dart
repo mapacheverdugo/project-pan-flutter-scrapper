@@ -14,16 +14,16 @@ import 'services/index.dart';
 
 class PanScrapperService {
   final LocalConnection connection;
-  final BuildContext context;
+  final BuildContext? context;
   final bool headless;
 
   late final ConnectionService _client;
   late final StorageService _storage;
 
   PanScrapperService({
-    required this.context,
     required this.connection,
-    this.headless = false,
+    this.context,
+    this.headless = true,
   }) {
     _storage = StorageServiceImpl();
 
@@ -36,8 +36,8 @@ class PanScrapperService {
 
   static ConnectionService _getClient({
     required InstitutionCode institutionCode,
-    required BuildContext context,
-    bool headless = false,
+    BuildContext? context,
+    bool headless = true,
   }) {
     final dio = Dio();
 
@@ -45,49 +45,55 @@ class PanScrapperService {
       case InstitutionCode.clBciPersonas:
         return ClBciPersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       case InstitutionCode.clSantanderPersonas:
         return ClSantanderPersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       case InstitutionCode.clScotiabankPersonas:
         return ClScotiabankPersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       case InstitutionCode.clBancoChilePersonas:
         return ClBancoChilePersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       case InstitutionCode.clItauPersonas:
         return ClItauPersonasConnectionService(
           dio,
-          ({String? cookies}) =>
-              _getWebview(context, headless: headless, cookies: cookies),
+          ({String? cookies}) => _getWebview(
+            context: context,
+            headless: headless,
+            cookies: cookies,
+          ),
         );
       case InstitutionCode.clBancoFalabellaPersonas:
         return ClBancoFalabellaPersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       case InstitutionCode.clBancoEstadoPersonas:
         return ClBancoEstadoPersonasConnectionService(
           dio,
-          () => _getWebview(context, headless: headless),
+          () => _getWebview(context: context, headless: headless),
         );
       default:
         throw Exception('Institution not supported');
     }
   }
 
-  static Future<WebviewInstance> _getWebview(
-    BuildContext context, {
+  static Future<WebviewInstance> _getWebview({
+    BuildContext? context,
     bool headless = true,
     String? cookies,
   }) async {
+    if (headless == false && context == null) {
+      throw Exception('Context is required for headful webview');
+    }
     return await Webview.run(
       headless: headless,
       context: context,
@@ -100,16 +106,11 @@ class PanScrapperService {
   }
 
   static Future<List<ExtractedProductModel>> initialAuthAndGetProducts(
-    BuildContext context,
     InstitutionCode institutionCode,
     String username,
     String password,
   ) async {
-    final client = _getClient(
-      institutionCode: institutionCode,
-      context: context,
-      headless: true,
-    );
+    final client = _getClient(institutionCode: institutionCode);
     final credentials = await client.auth(username, password);
     return client.getProducts(credentials);
   }

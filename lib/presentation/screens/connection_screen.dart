@@ -183,7 +183,6 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
       _connectionNotifier.setLoading(true);
 
       final products = await PanScrapperService.initialAuthAndGetProducts(
-        context,
         institutionCode,
         username,
         password,

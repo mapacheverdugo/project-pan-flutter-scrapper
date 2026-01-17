@@ -122,6 +122,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
     return Table(
       children: <TableRow>[
         _buildTableRow('ID', product.providerId),
+        _buildTableRow('Number', widget.product.number),
         _buildTableRow('Name', product.name, isOdd: true),
         _buildTableRow('Type', product.type.label),
         _buildTableRow(

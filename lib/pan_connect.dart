@@ -166,7 +166,6 @@ class PanConnect {
   }
 
   static Future<void> syncLocalConnection(
-    BuildContext context,
     String linkToken,
     String publicKey,
   ) async {
@@ -190,10 +189,7 @@ class PanConnect {
       throw Exception('Connection not found');
     }
 
-    if (!context.mounted) return;
-
     final panScrapperService = PanScrapperService(
-      context: context,
       connection: connection.toEntity(),
     );
 

@@ -22,7 +22,10 @@ class ClSantanderPersonasDepositaryAccountTransactionMapper {
         }
 
         final processingDate = nullIfEmpty(movement.accountingDate);
-        final transactionTime = nullIfEmpty(movement.operationTime);
+        final transactionTimeRaw = nullIfEmpty(movement.operationTime);
+        final transactionTime = transactionTimeRaw != null
+            ? '${transactionTimeRaw.substring(0, 2)}:${transactionTimeRaw.substring(2, 4)}'
+            : null;
         final description = nullIfEmpty(movement.expandedCode) ?? '';
 
         // Parse amount: negative the number divided by 100

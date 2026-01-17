@@ -103,6 +103,7 @@ class ClBancoChilePersonasDepositaryTransactionMapper {
           ),
         );
       } catch (e) {
+        log('ClBancoChilePersonasDepositaryTransactionMapper error: $e');
         // Skip transactions that fail to parse
         continue;
       }

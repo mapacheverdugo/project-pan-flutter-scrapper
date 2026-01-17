@@ -83,11 +83,7 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                       );
                       return;
                     }
-                    PanConnect.syncLocalConnection(
-                      context,
-                      linkToken,
-                      widget.publicKey,
-                    );
+                    PanConnect.syncLocalConnection(linkToken, widget.publicKey);
                   },
                   child: Text('Sync'),
                 ),

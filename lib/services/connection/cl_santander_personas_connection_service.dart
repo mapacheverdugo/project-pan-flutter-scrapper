@@ -241,7 +241,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final metadata = responseData['METADATA'] as Map<String, dynamic>?;
       if (metadata != null && metadata['STATUS'] == '101') {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       return ClSantanderPersonasCardResponse.fromJson(responseData);
@@ -324,7 +326,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final metadata = responseData['METADATA'] as Map<String, dynamic>?;
       if (metadata != null && metadata['STATUS'] == '101') {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       return ClSantanderPersonasProductsResponse.fromJson(responseData);
@@ -466,20 +470,26 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final responseData = response.data;
       if (responseData == null) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       if (responseData is Map<String, dynamic>) {
         final metadata = responseData['METADATA'] as Map<String, dynamic>?;
         if (metadata != null && metadata['STATUS'] == '401') {
-          throw Exception('Credentials expired - needs reauth');
+          throw ConnectionException(
+            ConnectionExceptionType.authCredentialsExpired,
+          );
         }
       }
     } catch (e) {
       log('Error in suscriberKey: $e');
       // Check if it's a 401 error
       if (e is DioException && e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
@@ -559,7 +569,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     } catch (e) {
       log('Error fetching depositary account transactions page: $e');
       if (e is DioException && e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
@@ -646,7 +658,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final metadata = responseData['METADATA'] as Map<String, dynamic>?;
       if (metadata != null && metadata['STATUS'] == '101') {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       // Parse response
@@ -791,7 +805,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final metadata = responseData['METADATA'] as Map<String, dynamic>?;
       if (metadata != null && metadata['STATUS'] == '101') {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       final model =
@@ -920,7 +936,9 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final metadata = responseData['METADATA'] as Map<String, dynamic>?;
       if (metadata != null && metadata['STATUS'] == '101') {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
 
       if (metadata?['STATUS'] != '0') {

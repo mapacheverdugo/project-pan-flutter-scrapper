@@ -55,6 +55,10 @@ class ClSantanderPersonasCreditCardUnbilledTransactionMapper {
         // Parse description
         final description = nullIfEmpty(tx.descripcion) ?? '';
 
+        if (description.trim().toUpperCase() == 'SALDO INICIAL') {
+          continue;
+        }
+
         // Parse amount - for national divide by 100, for international use as is
         final importe = tx.importe;
 

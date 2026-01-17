@@ -329,7 +329,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         account,
       );
 
-      final useDates = account.codigo != 'LCD';
+      final useDates = false;
 
       // Use the configuration date range - convert milliseconds to ISO strings
       final startDate = useDates
