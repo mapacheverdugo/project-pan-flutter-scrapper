@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/currency_type.dart';
 import 'package:pan_scrapper/entities/extraction.dart';
 import 'package:pan_scrapper/entities/extraction_operation.dart';
+import 'package:pan_scrapper/entities/institution_code.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/entities/product_type.dart';
 import 'package:pan_scrapper/models/connection/extracted_connection_result_model.dart';
@@ -189,6 +190,28 @@ class PanConnect {
       throw Exception('Connection not found');
     }
 
+    // Check minimum sync interval
+    final minimumInterval =
+        connection.institutionCode.minimumSyncIntervalMinutes;
+
+    if (minimumInterval == null) {
+      throw Exception('Sync not supported for ${connection.institutionCode}');
+    }
+
+    if (connection.lastSyncDateTime != null) {
+      final now = DateTime.now();
+      final timeSinceLastSync = now.difference(connection.lastSyncDateTime!);
+      final minimumIntervalDuration = Duration(minutes: minimumInterval);
+
+      if (timeSinceLastSync < minimumIntervalDuration) {
+        final remainingMinutes =
+            (minimumIntervalDuration - timeSinceLastSync).inMinutes;
+        throw Exception(
+          'Minimum sync interval not reached. Please wait $remainingMinutes more minute(s) before syncing again.',
+        );
+      }
+    }
+
     final panScrapperService = PanScrapperService(
       connection: connection.toEntity(),
     );
@@ -276,5 +299,8 @@ class PanConnect {
       publicKey: publicKey,
       linkToken: linkToken,
     );
+
+    // Update last sync date/time after successful sync
+    await storage.updateLastSyncDateTime(connectionId, DateTime.now());
   }
 }

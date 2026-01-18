@@ -186,6 +186,8 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
         institutionCode,
         username,
         password,
+        headless: false,
+        context: context,
       );
 
       _connectionNotifier.setProducts(products);

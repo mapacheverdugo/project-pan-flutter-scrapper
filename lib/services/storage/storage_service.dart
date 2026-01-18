@@ -14,6 +14,7 @@ abstract class StorageService {
   Future<LocalConnectionModel?> getConnectionById(String id);
   Future<bool> hasConnections();
   Future<void> deleteConnection(String id);
+  Future<void> updateLastSyncDateTime(String connectionId, DateTime dateTime);
 
   Future<void> saveConnectionCredentials(
     String connectionId,
@@ -78,6 +79,28 @@ class StorageServiceImpl extends StorageService {
     final currentConnections = await getSavedConnections();
     final newConnections = currentConnections.where((e) => e.id != id).toList();
     final newConnectionsJson = jsonEncode(newConnections);
+    await _storage.write(key: connectionsKey, value: newConnectionsJson);
+  }
+
+  @override
+  Future<void> updateLastSyncDateTime(String connectionId, DateTime dateTime) async {
+    final currentConnections = await getSavedConnections();
+    final connectionIndex = currentConnections.indexWhere((e) => e.id == connectionId);
+    
+    if (connectionIndex == -1) {
+      throw Exception('Connection not found');
+    }
+
+    final updatedConnection = LocalConnectionModel(
+      id: currentConnections[connectionIndex].id,
+      institutionCode: currentConnections[connectionIndex].institutionCode,
+      rawUsername: currentConnections[connectionIndex].rawUsername,
+      password: currentConnections[connectionIndex].password,
+      lastSyncDateTime: dateTime,
+    );
+
+    currentConnections[connectionIndex] = updatedConnection;
+    final newConnectionsJson = jsonEncode(currentConnections);
     await _storage.write(key: connectionsKey, value: newConnectionsJson);
   }
 

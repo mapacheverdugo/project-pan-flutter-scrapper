@@ -70,8 +70,14 @@ class ClScotiabankPersonasProductMapper {
         );
       }
 
+      final productId = createProductId(
+        rawDisplayId: account.displayId,
+        rawType: account.type,
+        rawCurrencyCode: account.currencyCode,
+      );
+
       return ExtractedProductModel(
-        providerId: account.displayId,
+        providerId: productId,
         number: removeEverythingButNumbers(account.displayId),
         name: account.description,
         type: productType,
@@ -143,8 +149,15 @@ class ClScotiabankPersonasProductMapper {
           ),
         );
       }
+
+      // Create product ID in the format: cardId_CREDITCARD (no currency for credit cards)
+      final productId = createProductId(
+        rawDisplayId: cardId,
+        rawType: 'CREDITCARD',
+      );
+
       return ExtractedProductModel(
-        providerId: cardId,
+        providerId: productId,
         number: cardId,
         name: card.description,
         type: ProductType.creditCard,
@@ -164,4 +177,29 @@ class ClScotiabankPersonasProductMapper {
     thousandSeparator: '.',
     decimalSeparator: ',',
   );
+
+  /// Creates a product ID in the format: displayId_type_currencyCode (for depositary accounts/credit lines)
+  /// or displayId_type (for credit cards)
+  static String createProductId({
+    required String rawDisplayId,
+    required String rawType,
+    String? rawCurrencyCode,
+  }) {
+    if (rawCurrencyCode != null && rawCurrencyCode.isNotEmpty) {
+      return '${rawDisplayId}_${rawType}_$rawCurrencyCode';
+    }
+    return '${rawDisplayId}_${rawType}';
+  }
+
+  /// Parses a product ID to extract its components
+  static ClScotiabankPersonasProductIdMetadata parseProductId(
+    String productId,
+  ) {
+    final parts = productId.split('_');
+    return ClScotiabankPersonasProductIdMetadata(
+      rawDisplayId: parts.length > 0 ? parts[0] : '',
+      rawType: parts.length > 1 ? parts[1] : '',
+      rawCurrencyCode: parts.length > 2 ? parts[2] : '',
+    );
+  }
 }

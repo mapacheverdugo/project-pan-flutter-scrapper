@@ -108,9 +108,20 @@ class PanScrapperService {
   static Future<List<ExtractedProductModel>> initialAuthAndGetProducts(
     InstitutionCode institutionCode,
     String username,
-    String password,
-  ) async {
-    final client = _getClient(institutionCode: institutionCode);
+    String password, {
+    bool headless = true,
+    BuildContext? context,
+  }) async {
+    late final ConnectionService client;
+    if (headless == false && context != null) {
+      client = _getClient(
+        institutionCode: institutionCode,
+        context: context,
+        headless: headless,
+      );
+    } else {
+      client = _getClient(institutionCode: institutionCode);
+    }
     final credentials = await client.auth(username, password);
     return client.getProducts(credentials);
   }

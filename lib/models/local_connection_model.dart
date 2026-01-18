@@ -10,13 +10,22 @@ class LocalConnectionModel {
   final InstitutionCode institutionCode;
   final String rawUsername;
   final String password;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
+  final DateTime? lastSyncDateTime;
 
   LocalConnectionModel({
     required this.id,
     required this.institutionCode,
     required this.rawUsername,
     required this.password,
+    this.lastSyncDateTime,
   });
+
+  static DateTime? _dateTimeFromJson(String? json) =>
+      json != null ? DateTime.parse(json) : null;
+
+  static String? _dateTimeToJson(DateTime? dateTime) =>
+      dateTime?.toIso8601String();
 
   factory LocalConnectionModel.fromJson(Map<String, dynamic> json) =>
       _$LocalConnectionModelFromJson(json);
@@ -27,6 +36,7 @@ class LocalConnectionModel {
         institutionCode: connection.institutionCode,
         rawUsername: connection.rawUsername,
         password: connection.password,
+        lastSyncDateTime: connection.lastSyncDateTime,
       );
 
   Map<String, dynamic> toJson() => _$LocalConnectionModelToJson(this);
@@ -36,5 +46,6 @@ class LocalConnectionModel {
     institutionCode: institutionCode,
     rawUsername: rawUsername,
     password: password,
+    lastSyncDateTime: lastSyncDateTime,
   );
 }

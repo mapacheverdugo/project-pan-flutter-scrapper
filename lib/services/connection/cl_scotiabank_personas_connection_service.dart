@@ -7,7 +7,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_details_response_model.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_with_details_model.dart';
@@ -72,12 +74,17 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       await completer.future;
 
       final cookies = await webview.cookies(
-        urls: [Uri.parse("https://www.scotiabank.cl/")],
+        urls: [
+          Uri.parse("https://www.scotiabank.cl/"),
+          Uri.parse("https://banco.scotiabank.cl"),
+        ],
       );
 
       await webview.close();
 
-      final cookieString = cookies.map((e) => '${e.name}=${e.value}').join(';');
+      final cookieString = cookies
+          .map((e) => '${e.name}=${e.value}')
+          .join('; ');
 
       log("ScotiabankService auth completed with: $cookieString");
 
@@ -157,19 +164,26 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       return response.data!;
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
   }
 
   /// Gets passport token for API requests
-  Future<String> _getPassportToken(String cookieString, String referer) async {
+  Future<String> _getPassportToken(
+    String cookieString,
+    String referer, {
+    String? intends,
+  }) async {
     try {
       final response = await _templateRequest<Map<String, dynamic>>(
         cookieString: cookieString,
         template: '/security/passport.json',
         referer: referer,
+        intends: intends,
       );
 
       log('getPassportToken response: $response');
@@ -214,7 +228,9 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
           .toList();
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
@@ -254,7 +270,9 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
           .toList();
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
@@ -287,7 +305,9 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       rethrow;
     }
@@ -315,9 +335,147 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError(
-      'Scotiabank depositary account transactions not implemented',
-    );
+    try {
+      // Parse product ID to get type
+      final productIdMetadata =
+          ClScotiabankPersonasProductMapper.parseProductId(productId);
+
+      final rawType = productIdMetadata.rawType;
+      final isCreditLine = rawType == 'LICRED';
+
+      // Get session data to find the account prd
+      final sessionData = await _getSessionData(credentials);
+
+      // Get prd from T01000 for depositary accounts or T01100 for credit lines
+      final sessionKey = isCreditLine ? 'T01100' : 'T01000';
+      final sessionEntry = sessionData[sessionKey] as Map<String, dynamic>?;
+
+      if (sessionEntry == null) {
+        throw Exception('Session entry $sessionKey not found');
+      }
+
+      final prd = sessionEntry['prd'];
+      if (prd == null) {
+        throw Exception('Account prd not found in session for $sessionKey');
+      }
+
+      // Handle prd as string or list
+      final cta = prd is List ? prd.first.toString() : prd.toString();
+
+      // Determine codprd based on type
+      final codprd = isCreditLine ? '02000' : '01000';
+
+      // Calculate date range: today - 45 days to today + 3 days
+      final now = DateTime.now();
+      final startDateTime = now.subtract(const Duration(days: 45));
+      final endDateTime = now.add(const Duration(days: 3));
+
+      final startDateString = startDateTime.toIso8601String().split('T')[0];
+      final endDateString = endDateTime.toIso8601String().split('T')[0];
+
+      final startDateParts = startDateString.split('-');
+      final endDateParts = endDateString.split('-');
+
+      // Format dates as YYYYMMDD
+      final fecini = startDateParts.join('');
+      final fecfin = endDateParts.join('');
+
+      final codtrs = isCreditLine ? "T01100" : "T01000";
+      final trans = "vt_TraeCartolaHistCtaCte";
+      final tmpl = "/admin/ftp.html";
+
+      // Extract date components: startDateParts is [year, month, day]
+      final idd = startDateParts[2]; // day
+      final imm = startDateParts[1]; // month
+      final iaa = startDateParts[0]; // year
+
+      final fdd = endDateParts[2]; // day
+      final fmm = endDateParts[1]; // month
+      final faa = endDateParts[0]; // year
+
+      // Build request parameters map for the new download endpoint
+      final params = <String, String>{
+        'TRANS': trans,
+        'TMPL': tmpl,
+        'XFMT': '1',
+        'cta': cta,
+        'codtrs': codtrs,
+        'codprd': codprd,
+        'fecini': fecini,
+        'fecfin': fecfin,
+      };
+
+      // Build referer URL - credit lines need date components and Aceptar params
+      final downloadReferer = isCreditLine
+          ? 'https://www.scotiabank.cl/cgi-bin/transac/dotrx?codprd=$codprd&codtrs=$codtrs&fecini=$fecini&fecfin=$fecfin&TRANS=vt_CartolaHistCtaCte&TMPL=%2Fctacte%2Fdetcartolahis.html&cta=$cta&idd=$idd&imm=$imm&iaa=$iaa&fdd=$fdd&fmm=$fmm&faa=$faa&Aceptar.x=32&Aceptar.y=12'
+          : 'https://www.scotiabank.cl/cgi-bin/transac/dotrx?codprd=$codprd&codtrs=$codtrs&fecini=$fecini&fecfin=$fecfin&TRANS=vt_CartolaHistCtaCte&TMPL=%2Fctacte%2Fdetcartolahis.html&cta=$cta';
+
+      final response = await _dio.get<String>(
+        'https://www.scotiabank.cl/api/sweb/jo-scotiaweb-cgi-java/download',
+        queryParameters: params,
+        options: Options(
+          headers: {
+            ..._headers,
+            'Cookie': credentials,
+            'Referer': downloadReferer,
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+          },
+          responseType: ResponseType.plain,
+        ),
+      );
+
+      final data = response.data ?? '';
+      log(
+        'Scotiabank depositary account transactions data length: ${data.length}',
+      );
+
+      // Parse and map transactions
+      return ClScotiabankPersonasDepositaryTransactionMapper.fromResponse(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
+      }
+      log('Error fetching Scotiabank depositary account transactions: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching Scotiabank depositary account transactions: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets session data from /admin/session.json
+  Future<Map<String, dynamic>> _getSessionData(String cookieString) async {
+    try {
+      final referer =
+          'https://www.scotiabank.cl/mfe/sweb/mfe-shell-web-cl/mfe/mfe/sweb/mfe-home-cl/';
+
+      final response = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+        queryParameters: {'TMPL': '/admin/session.json'},
+        options: Options(
+          headers: {..._headers, 'Cookie': cookieString, 'Referer': referer},
+        ),
+      );
+
+      return response.data ?? {};
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
+      }
+      log('Error getting session data: $e');
+      rethrow;
+    }
   }
 
   @override
@@ -326,7 +484,10 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
     String productId,
   ) async {
     try {
-      final rawId = productId;
+      // Parse product ID to get displayId (cardId)
+      final productIdMetadata =
+          ClScotiabankPersonasProductMapper.parseProductId(productId);
+      final rawId = productIdMetadata.rawDisplayId;
       final cardLast4Digits = rawId.length >= 4
           ? rawId.substring(rawId.length - 4)
           : rawId;
@@ -453,7 +614,9 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       return response.data ?? <String, dynamic>{};
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       log('Error fetching card bill period detail: $e');
       rethrow;
@@ -570,7 +733,9 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       return Uint8List.fromList(response.data as List<int>);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        throw Exception('Credentials expired - needs reauth');
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
       }
       log('Error fetching Scotiabank credit card bill PDF: $e');
       rethrow;

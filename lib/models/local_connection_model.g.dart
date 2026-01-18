@@ -16,6 +16,9 @@ LocalConnectionModel _$LocalConnectionModelFromJson(
   ),
   rawUsername: json['rawUsername'] as String,
   password: json['password'] as String,
+  lastSyncDateTime: LocalConnectionModel._dateTimeFromJson(
+    json['lastSyncDateTime'] as String?,
+  ),
 );
 
 Map<String, dynamic> _$LocalConnectionModelToJson(
@@ -25,6 +28,9 @@ Map<String, dynamic> _$LocalConnectionModelToJson(
   'institutionCode': _$InstitutionCodeEnumMap[instance.institutionCode]!,
   'rawUsername': instance.rawUsername,
   'password': instance.password,
+  'lastSyncDateTime': LocalConnectionModel._dateTimeToJson(
+    instance.lastSyncDateTime,
+  ),
 };
 
 const _$InstitutionCodeEnumMap = {
