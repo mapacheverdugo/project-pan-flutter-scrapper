@@ -9,6 +9,7 @@ import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/credit_card_unbilled_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_details_response_model.dart';
@@ -750,8 +751,87 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
     CurrencyType transactionType,
-  ) {
-    // TODO: implement getCreditCardUnbilledTransactions
-    throw UnimplementedError();
+  ) async {
+    try {
+      // Parse product ID to get displayId (cardId)
+      final productIdMetadata =
+          ClScotiabankPersonasProductMapper.parseProductId(productId);
+      final rawId = productIdMetadata.rawDisplayId;
+      final cardLast4Digits = rawId.length >= 4
+          ? rawId.substring(rawId.length - 4)
+          : rawId;
+
+      final referer =
+          'https://www.scotiabank.cl/mfe-simple-account-statement-web-cl/?tab=movimientos-no-facturados';
+
+      // Get card list to find the card by last 4 digits
+      final cardsResponse = await _templateRequest<Map<String, dynamic>>(
+        cookieString: credentials,
+        template: '/visa/lstTarjetaSaldosEnc.json',
+        referer: referer,
+        intends: null,
+      );
+
+      final l09000 = cardsResponse['L09000'] as Map<String, dynamic>?;
+      final cards = l09000?['cards'] as List<dynamic>? ?? [];
+
+      // Find the card matching last 4 digits
+      String? prdoriid;
+      for (final card in cards) {
+        final cardMap = card as Map<String, dynamic>;
+        final prd = cardMap['prd'] as String? ?? '';
+        if (prd.endsWith(cardLast4Digits)) {
+          prdoriid = cardMap['prdoriid'] as String?;
+          break;
+        }
+      }
+
+      if (prdoriid == null) {
+        throw Exception('Card not found for last 4 digits: $cardLast4Digits');
+      }
+
+      // Get unbilled transactions
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final response = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+        queryParameters: {
+          'TMPL': '/ahorro/saldoNFEnc.json',
+          'TRANS': 'vt_UltimosMovVisaEnc',
+          'visa': prdoriid,
+          'rellamado': '0',
+          '_': timestamp.toString(),
+        },
+        options: Options(
+          headers: {..._headers, 'Referer': referer, 'Cookie': credentials},
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Empty response from unbilled transactions endpoint');
+      }
+
+      // Parse response
+      final responseModel =
+          ClScotiabankPersonasCardUnbilledTransactionsResponseModel.fromJson(
+            data,
+          );
+
+      return ClScotiabankPersonasCreditCardUnbilledTransactionMapper.fromResponseModel(
+        responseModel,
+        transactionType,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
+      }
+      log('Error fetching Scotiabank credit card unbilled transactions: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching Scotiabank credit card unbilled transactions: $e');
+      rethrow;
+    }
   }
 }

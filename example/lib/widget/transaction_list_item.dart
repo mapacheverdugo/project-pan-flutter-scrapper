@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/extracted_transaction.dart';
+import 'package:pan_scrapper/helpers/string_helpers.dart';
 
 class TransactionListItem extends StatelessWidget {
   const TransactionListItem({super.key, required this.transaction});
@@ -17,16 +18,28 @@ class TransactionListItem extends StatelessWidget {
   }
 
   String? get _countryCity {
-    var str = "";
-    str += transaction.country ?? '';
+    String? str;
+    str = nullIfEmpty(transaction.country);
 
-    if (transaction.city != null) {
-      if (str.isNotEmpty) {
+    if (transaction.city != null && transaction.city!.isNotEmpty) {
+      if (str != null) {
         str += ' | ';
+      } else {
+        str = '';
       }
 
       str += transaction.city!;
     }
+
+    return str;
+  }
+
+  String? get _installments {
+    if (transaction.installments == null) {
+      return null;
+    }
+
+    return '${transaction.installments?.currentCount}/${transaction.installments?.totalCount}';
   }
 
   @override
@@ -52,6 +65,7 @@ class TransactionListItem extends StatelessWidget {
           if (transaction.processingDate != null)
             Text('Processing Date: ${transaction.processingDate}'),
           if (_countryCity != null) Text('Country/City: $_countryCity'),
+          if (_installments != null) Text('Installments: $_installments'),
         ],
       ),
     );
