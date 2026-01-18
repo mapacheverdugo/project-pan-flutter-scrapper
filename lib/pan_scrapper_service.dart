@@ -154,7 +154,7 @@ class PanScrapperService {
     );
   }
 
-  Future<CreditCardBill> getCreditCardBill(
+  Future<ExtractedCreditCardBill> getCreditCardBill(
     String productId,
     String periodId,
   ) async {

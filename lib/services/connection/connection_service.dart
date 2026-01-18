@@ -18,7 +18,7 @@ abstract class ConnectionService {
     String productId,
     CurrencyType transactionType,
   );
-  Future<CreditCardBill> getCreditCardBill(
+  Future<ExtractedCreditCardBill> getCreditCardBill(
     String credentials,
     String productId,
     String periodId,

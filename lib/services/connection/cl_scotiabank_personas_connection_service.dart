@@ -625,7 +625,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   }
 
   @override
-  Future<CreditCardBill> getCreditCardBill(
+  Future<ExtractedCreditCardBill> getCreditCardBill(
     String credentials,
     String productId,
     String periodId,

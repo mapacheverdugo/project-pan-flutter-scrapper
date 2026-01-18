@@ -353,7 +353,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       );
       setState(() {
         _isLoadingNationalTransactions = false;
-        _nationalTransactions = bill.transactions;
+        _nationalTransactions = bill.transactions ?? [];
       });
     } catch (e) {
       setState(() {
@@ -394,7 +394,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       );
       setState(() {
         _isLoadingInternationalTransactions = false;
-        _internationalTransactions = bill.transactions;
+        _internationalTransactions = bill.transactions ?? [];
       });
     } catch (e) {
       setState(() {
