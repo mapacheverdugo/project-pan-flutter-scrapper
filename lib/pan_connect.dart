@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/entities/currency_type.dart';
@@ -12,6 +10,7 @@ import 'package:pan_scrapper/models/connection/extracted_connection_result_model
 import 'package:pan_scrapper/models/institution_model.dart';
 import 'package:pan_scrapper/models/link_intent_model.dart';
 import 'package:pan_scrapper/models/local_connection_model.dart';
+import 'package:pan_scrapper/pan_connect_exception.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 import 'package:pan_scrapper/presentation/screens/connection_screen.dart';
 import 'package:pan_scrapper/services/api/api_service.dart';
@@ -181,13 +180,13 @@ class PanConnect {
 
     final hasConnections = await storage.hasConnections();
     if (!hasConnections) {
-      throw Exception('No connections found');
+      throw PanConnectException(PanConnectExceptionType.connectionNotFound);
     }
 
     final connection = await storage.getConnectionById(connectionId);
 
     if (connection == null) {
-      throw Exception('Connection not found');
+      throw PanConnectException(PanConnectExceptionType.connectionNotFound);
     }
 
     // Check minimum sync interval
@@ -195,7 +194,7 @@ class PanConnect {
         connection.institutionCode.minimumSyncIntervalMinutes;
 
     if (minimumInterval == null) {
-      throw Exception('Sync not supported for ${connection.institutionCode}');
+      throw PanConnectException(PanConnectExceptionType.syncNotSupported);
     }
 
     if (connection.lastSyncDateTime != null) {
@@ -206,8 +205,11 @@ class PanConnect {
       if (timeSinceLastSync < minimumIntervalDuration) {
         final remainingMinutes =
             (minimumIntervalDuration - timeSinceLastSync).inMinutes;
-        throw Exception(
-          'Minimum sync interval not reached. Please wait $remainingMinutes more minute(s) before syncing again.',
+        throw PanConnectException(
+          PanConnectExceptionType.syncIntervalNotReached,
+          originalException: Exception(
+            'Minimum sync interval not reached. Please wait $remainingMinutes more minute(s) before syncing again.',
+          ),
         );
       }
     }
@@ -290,7 +292,10 @@ class PanConnect {
           );
         }
       } catch (e) {
-        log('Error extracting ${product.type} transactions: $e');
+        throw PanConnectException(
+          PanConnectExceptionType.unknown,
+          originalException: e,
+        );
       }
     }
 
