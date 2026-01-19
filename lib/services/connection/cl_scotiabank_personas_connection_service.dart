@@ -9,11 +9,13 @@ import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/credit_card_bill_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/credit_card_unbilled_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_scotiabank_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_details_response_model.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/card_with_details_model.dart';
+import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/get_simple_account_statement_response.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/index.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
 
@@ -630,7 +632,95 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
     String productId,
     String periodId,
   ) async {
-    throw UnimplementedError('Scotiabank credit card bill not implemented');
+    try {
+      // Parse periodId: format is "cardId|billingDate|currencyType"
+      final periodParts = periodId.split('|');
+      if (periodParts.length < 3) {
+        throw Exception('Invalid period ID format');
+      }
+      final rawCardId = periodParts[0]; // Card ID (not base64 encoded)
+      final rawBillingDate = periodParts[1]; // DDMMYYYY format
+      final rawCurrencyType = periodParts[2];
+
+      // Convert DDMMYYYY to YYYY-MM for API period parameter
+      if (rawBillingDate.length != 8) {
+        throw Exception('Invalid billing date format: $rawBillingDate');
+      }
+      final month = rawBillingDate.substring(2, 4);
+      final year = rawBillingDate.substring(4, 8);
+      final periodParam = '$year-$month'; // YYYY-MM format
+
+      // Determine currency for API
+      final currencyType = rawCurrencyType == CurrencyType.national.name
+          ? CurrencyType.national
+          : CurrencyType.international;
+      final currencyParam = currencyType == CurrencyType.national
+          ? 'CLP'
+          : 'USD';
+
+      // Base64 encode card ID for URL
+      final base64CardId = base64Encode(utf8.encode(rawCardId));
+
+      final referer =
+          'https://www.scotiabank.cl/mfe-simple-account-statement-web-cl/?tab=saldo';
+
+      // Get JWT token (no intends parameter for this request)
+      final jwtResponse = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fsecurity%2Fjwt.xml&intends=',
+        options: Options(
+          headers: {..._headers, 'Referer': referer, 'Cookie': credentials},
+        ),
+      );
+
+      final token = jwtResponse.data?['token'] as String?;
+      if (token == null) {
+        throw Exception('Failed to get JWT token');
+      }
+
+      // Get account statement
+      final response = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/on-prem/bff-simple-account-statement-web-cl/v1/credit/$base64CardId/getSimpleAccountStatement',
+        queryParameters: {'period': periodParam, 'currency': currencyParam},
+        options: Options(
+          headers: {
+            ..._headers,
+            'Accept': 'application/json',
+            'Accept-Language': 'es-419,es;q=0.9',
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Referer': referer,
+            'Cookie': credentials,
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Empty response from account statement endpoint');
+      }
+
+      // Parse response
+      final responseModel =
+          ClScotiabankPersonasGetSimpleAccountStatementResponse.fromJson(data);
+
+      // Map to ExtractedCreditCardBill
+      return ClScotiabankPersonasCreditCardBillMapper.fromResponseModel(
+        responseModel,
+        periodId,
+        currencyType,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
+      }
+      log('Error fetching Scotiabank credit card bill: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching Scotiabank credit card bill: $e');
+      rethrow;
+    }
   }
 
   @override

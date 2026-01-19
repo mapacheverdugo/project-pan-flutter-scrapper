@@ -20,6 +20,22 @@ void main() {
   );
 
   test(
+    r'tryParse amount in CLP with text "$-2.000.000" to be equal to -2000000',
+    () {
+      final amount = Amount.tryParse(
+        r'$-2.000.000',
+        Currency.clp,
+        options: AmountParseOptions(
+          factor: 1,
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+        ),
+      );
+      expect(amount?.value, -2000000);
+    },
+  );
+
+  test(
     r'tryParse amount in USD with text "USD 5.364" to be equal to 536400',
     () {
       final amount = Amount.tryParse(
@@ -238,6 +254,53 @@ void main() {
         ),
       );
       expect(amount?.value, -4573);
+    },
+  );
+
+  // USD -255,49
+  test(
+    r'tryParse amount in USD with text "USD -255,49" to be equal to -25549',
+    () {
+      final amount = Amount.tryParse(
+        'USD -255,49',
+        Currency.usd,
+        options: AmountParseOptions(
+          factor: 1,
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+        ),
+      );
+      expect(amount?.value, -25549);
+    },
+  );
+
+  test(r'tryParse amount in USD with text "USD 0,00" to be equal to 0', () {
+    final amount = Amount.tryParse(
+      'USD 0,00',
+      Currency.usd,
+
+      options: AmountParseOptions(
+        factor: 1,
+        thousandSeparator: '.',
+        decimalSeparator: ',',
+      ),
+    );
+    expect(amount?.value, 0);
+  });
+
+  test(
+    r'tryParse amount in USD with text "USD 183,90" to be equal to 18390',
+    () {
+      final amount = Amount.tryParse(
+        'USD 183,90',
+        Currency.usd,
+        options: AmountParseOptions(
+          factor: 1,
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+        ),
+      );
+      expect(amount?.value, 18390);
     },
   );
 }
