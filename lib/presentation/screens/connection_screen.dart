@@ -14,6 +14,7 @@ import 'package:pan_scrapper/presentation/widgets/connection_header.dart';
 
 class ConnectionStepLayout extends StatelessWidget {
   final Widget child;
+  final bool headless;
   final ConnectionStep step;
   final VoidCallback? onBackPressed;
   final VoidCallback? onClosePressed;
@@ -22,6 +23,7 @@ class ConnectionStepLayout extends StatelessWidget {
     super.key,
     required this.child,
     required this.step,
+    this.headless = true,
     this.onBackPressed,
     this.onClosePressed,
   });
@@ -56,6 +58,7 @@ class ConnectionFlowScreen extends StatefulWidget {
   )?
   onSuccess;
   final Function(String)? onError;
+  final bool headless;
 
   const ConnectionFlowScreen({
     super.key,
@@ -63,6 +66,7 @@ class ConnectionFlowScreen extends StatefulWidget {
     required this.institutions,
     this.onSuccess,
     this.onError,
+    this.headless = true,
   });
 
   @override
@@ -186,7 +190,7 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
         institutionCode,
         username,
         password,
-        headless: false,
+        headless: widget.headless,
         context: context,
       );
 

@@ -35,9 +35,11 @@ class PanConnect {
 
   static Future<void> launch(
     BuildContext context,
+
     String publicKey,
     String linkWidgetToken, {
     void Function(String exchangeToken, String username)? onSuccess,
+    bool headless = true,
   }) async {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
@@ -88,6 +90,7 @@ class PanConnect {
                 ConnectionFlowScreen(
                   institutions: institutions,
                   linkIntent: linkIntent,
+                  headless: headless,
                   onSuccess: (connection, password) async {
                     await _saveConnection(
                       connection: connection,
