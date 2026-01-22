@@ -13,6 +13,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   validate_rut: ^0.2.2
   flutter_secure_storage: ^10.0.0
+  open_file: ^3.5.2
+  path_provider: ^2.1.2
 
   pan_scrapper:
     path: ../

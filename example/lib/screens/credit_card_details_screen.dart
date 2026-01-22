@@ -1,9 +1,18 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'dart:io';
+
 import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
 import 'package:example/widget/transaction_list_item.dart';
 import 'package:flutter/material.dart';
+import 'package:open_file/open_file.dart';
+import 'package:pan_scrapper/entities/currency.dart';
+import 'package:pan_scrapper/entities/extraction.dart';
+import 'package:pan_scrapper/entities/extraction_operation.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CreditCardDetailsScreen extends StatefulWidget {
   const CreditCardDetailsScreen({
@@ -33,6 +42,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
   bool _isLoadingNationalTransactions = false;
   bool _isLoadingInternationalTransactions = false;
   int _previousTabIndex = 0;
+  ExtractedCreditCardBill? _nationalBill;
+  ExtractedCreditCardBill? _internationalBill;
+  bool _isLoadingPdf = false;
 
   @override
   void initState() {
@@ -194,6 +206,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     setState(() {
                       _selectedNationalPeriodId = value;
                       _nationalTransactions = [];
+                      _nationalBill = null;
                     });
                   },
                 ),
@@ -218,6 +231,21 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
             ],
           ),
           SizedBox(height: 20),
+          if (_nationalBill != null) _buildBillSummary(_nationalBill!),
+          if (_nationalBill != null) SizedBox(height: 20),
+          if (_nationalBill != null && _selectedNationalPeriodId != 'unbilled')
+            ElevatedButton.icon(
+              onPressed: _isLoadingPdf ? null : () => _openPdf(_nationalBill!),
+              icon: _isLoadingPdf
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.picture_as_pdf),
+              label: Text('Open PDF'),
+            ),
+          if (_nationalBill != null) SizedBox(height: 20),
           if (_nationalTransactions.isNotEmpty)
             ..._nationalTransactions.map((transaction) {
               return TransactionListItem(transaction: transaction);
@@ -265,6 +293,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     setState(() {
                       _selectedInternationalPeriodId = value;
                       _internationalTransactions = [];
+                      _internationalBill = null;
                     });
                   },
                 ),
@@ -289,6 +318,25 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
             ],
           ),
           SizedBox(height: 20),
+          if (_internationalBill != null)
+            _buildBillSummary(_internationalBill!),
+          if (_internationalBill != null) SizedBox(height: 20),
+          if (_internationalBill != null &&
+              _selectedInternationalPeriodId != 'unbilled')
+            ElevatedButton.icon(
+              onPressed: _isLoadingPdf
+                  ? null
+                  : () => _openPdf(_internationalBill!),
+              icon: _isLoadingPdf
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.picture_as_pdf),
+              label: Text('Open PDF'),
+            ),
+          if (_internationalBill != null) SizedBox(height: 20),
           if (_internationalTransactions.isNotEmpty)
             ..._internationalTransactions.map((transaction) {
               return TransactionListItem(transaction: transaction);
@@ -354,6 +402,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       setState(() {
         _isLoadingNationalTransactions = false;
         _nationalTransactions = bill.transactions ?? [];
+        _nationalBill = bill;
       });
     } catch (e) {
       setState(() {
@@ -395,6 +444,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
       setState(() {
         _isLoadingInternationalTransactions = false;
         _internationalTransactions = bill.transactions ?? [];
+        _internationalBill = bill;
       });
     } catch (e) {
       setState(() {
@@ -404,6 +454,189 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Widget _buildBillSummary(ExtractedCreditCardBill bill) {
+    final summary = bill.summary;
+    if (summary == null) return SizedBox.shrink();
+
+    final currency = bill.currencyType == CurrencyType.international
+        ? Currency.usd
+        : Currency.clp;
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bill Summary',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            if (summary.openingBillingDate != null)
+              _buildSummaryRow('Opening Date', summary.openingBillingDate!),
+            if (summary.closingBillingDate != null)
+              _buildSummaryRow('Closing Date', summary.closingBillingDate!),
+            if (summary.paymentDueDate != null)
+              _buildSummaryRow('Payment Due Date', summary.paymentDueDate!),
+            if (summary.totalBilledAmount != null)
+              _buildSummaryRow(
+                'Total Billed',
+                Amount(
+                  currency: currency,
+                  value: summary.totalBilledAmount!,
+                ).formattedDependingOnCurrency,
+              ),
+            if (summary.minimumPaymentAmount != null)
+              _buildSummaryRow(
+                'Minimum Payment',
+                Amount(
+                  currency: currency,
+                  value: summary.minimumPaymentAmount!,
+                ).formattedDependingOnCurrency,
+              ),
+            if (summary.installmentBalance != null)
+              _buildSummaryRow(
+                'Installment Balance',
+                Amount(
+                  currency: currency,
+                  value: summary.installmentBalance!,
+                ).formattedDependingOnCurrency,
+              ),
+            if (summary.previousBillSummary != null) ...[
+              SizedBox(height: 8),
+              Divider(),
+              SizedBox(height: 8),
+              Text(
+                'Previous Bill',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              if (summary.previousBillSummary!.billedAmount != null)
+                _buildSummaryRow(
+                  'Billed Amount',
+                  Amount(
+                    currency: currency,
+                    value: summary.previousBillSummary!.billedAmount!,
+                  ).formattedDependingOnCurrency,
+                ),
+              if (summary.previousBillSummary!.paidAmount != null)
+                _buildSummaryRow(
+                  'Paid Amount',
+                  Amount(
+                    currency: currency,
+                    value: summary.previousBillSummary!.paidAmount!,
+                  ).formattedDependingOnCurrency,
+                ),
+              if (summary.previousBillSummary!.finalDueAmount != null)
+                _buildSummaryRow(
+                  'Final Due Amount',
+                  Amount(
+                    currency: currency,
+                    value: summary.previousBillSummary!.finalDueAmount!,
+                  ).formattedDependingOnCurrency,
+                ),
+            ],
+            if (summary.next4Months != null &&
+                summary.next4Months!.isNotEmpty) ...[
+              SizedBox(height: 8),
+              Divider(),
+              SizedBox(height: 8),
+              Text(
+                'Next 4 Months',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              ...summary.next4Months!.map((item) {
+                return _buildSummaryRow(
+                  'Month ${item.number}',
+                  item.value != null
+                      ? Amount(
+                          currency: currency,
+                          value: item.value!,
+                        ).formattedDependingOnCurrency
+                      : 'N/A',
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.w500)),
+          Text(value),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPdf(ExtractedCreditCardBill bill) async {
+    final pdfBase64 = bill.pdfBase64;
+    if (pdfBase64 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF not available for unbilled period')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingPdf = true;
+    });
+
+    try {
+      final extraction = Extraction(
+        payload: bill.toJson(),
+        params: {
+          'productId': widget.product.providerId,
+          'billPeriodId': bill.periodProviderId,
+        },
+        operation: ExtractionOperation.creditCardBillDetails,
+      );
+      log('extraction: ${extraction.toJson()}');
+      // Get temporary directory
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+        '${tempDir.path}/credit_card_bill_${bill.periodProviderId}.pdf',
+      );
+      await file.writeAsBytes(base64Decode(pdfBase64));
+
+      // Open the file
+      final result = await OpenFile.open(file.path);
+      if (result.type != ResultType.done) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to open PDF: ${result.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading PDF: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPdf = false;
+        });
       }
     }
   }

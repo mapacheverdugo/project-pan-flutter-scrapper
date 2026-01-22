@@ -11,16 +11,18 @@ part 'extracted_credit_card_bill.g.dart';
   converters: [CurrencyTypeJsonConverter()],
 )
 class ExtractedCreditCardBill {
-  final String periodId;
+  final String periodProviderId;
   final CurrencyType currencyType;
   final ExtractedCreditCardBillSummary? summary;
   final List<ExtractedTransactionWithoutProviderId>? transactions;
+  final String? billDocumentBase64;
 
   ExtractedCreditCardBill({
-    required this.periodId,
+    required this.periodProviderId,
     required this.currencyType,
     required this.summary,
     required this.transactions,
+    required this.billDocumentBase64,
   });
 
   factory ExtractedCreditCardBill.fromJson(Map<String, dynamic> json) =>

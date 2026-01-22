@@ -1,13 +1,12 @@
 import 'package:pan_scrapper/entities/amount.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/currency_type.dart';
-import 'package:pan_scrapper/entities/extracted_credit_card_bill.dart';
 import 'package:pan_scrapper/entities/extracted_credit_card_bill_summary.dart';
 import 'package:pan_scrapper/helpers/date_helpers.dart';
 import 'package:pan_scrapper/services/connection/models/cl_scotiabank_personas/get_simple_account_statement_response.dart';
 
 class ClScotiabankPersonasCreditCardBillMapper {
-  static ExtractedCreditCardBill fromResponseModel(
+  static ExtractedCreditCardBillSummary fromResponseModel(
     ClScotiabankPersonasGetSimpleAccountStatementResponse model,
     String periodId,
     CurrencyType currencyType,
@@ -81,12 +80,7 @@ class ClScotiabankPersonasCreditCardBillMapper {
       metadata: null,
     );
 
-    return ExtractedCreditCardBill(
-      periodId: periodId,
-      currencyType: currencyType,
-      summary: summary,
-      transactions: null, // Transactions are not included in this response
-    );
+    return summary;
   }
 
   static Amount? _parseAmount(String? value, Currency currency) {

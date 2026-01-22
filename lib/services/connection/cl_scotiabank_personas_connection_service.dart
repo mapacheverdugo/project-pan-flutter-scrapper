@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -132,7 +131,10 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
 
       return [...parsedDepositaryAccounts, ...parsedCardsBalances];
     } catch (e) {
-      log('Error fetching products: $e');
+      final connectionException = await _convertToConnectionException(e);
+      if (connectionException != null) {
+        throw connectionException;
+      }
       rethrow;
     }
   }
@@ -638,7 +640,6 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       if (periodParts.length < 3) {
         throw Exception('Invalid period ID format');
       }
-      final rawCardId = periodParts[0]; // Card ID (not base64 encoded)
       final rawBillingDate = periodParts[1]; // DDMMYYYY format
       final rawCurrencyType = periodParts[2];
 
@@ -658,11 +659,48 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
           ? 'CLP'
           : 'USD';
 
-      // Base64 encode card ID for URL
-      final base64CardId = base64Encode(utf8.encode(rawCardId));
+      // Parse productId to get last 4 digits
+      final productIdMetadata =
+          ClScotiabankPersonasProductMapper.parseProductId(productId);
+      final rawId = productIdMetadata.rawDisplayId;
+      final cardLast4Digits = rawId.length >= 4
+          ? rawId.substring(rawId.length - 4)
+          : rawId;
 
       final referer =
           'https://www.scotiabank.cl/mfe-simple-account-statement-web-cl/?tab=saldo';
+
+      // Get session data to find the card prd
+      final sessionResponse = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fadmin%2Fsession.json',
+        options: Options(
+          headers: {..._headers, 'Referer': referer, 'Cookie': credentials},
+        ),
+      );
+
+      final l09000 = sessionResponse.data?['L09000'] as Map<String, dynamic>?;
+      final prdArray = l09000?['prd'] as List<dynamic>? ?? [];
+
+      // Find the prd string that ends with the same 4 digits as the product
+      String? matchingPrd;
+      for (final prd in prdArray) {
+        final prdString = prd.toString();
+        if (prdString.endsWith(cardLast4Digits)) {
+          matchingPrd = prdString;
+          break;
+        }
+      }
+
+      if (matchingPrd == null) {
+        throw Exception(
+          'Card not found in session data for last 4 digits: $cardLast4Digits',
+        );
+      }
+
+      final idToEncode = matchingPrd.substring(1);
+
+      // Encode the prd string to base64 to use as cardId
+      final base64CardId = base64Encode(utf8.encode(idToEncode));
 
       // Get JWT token (no intends parameter for this request)
       final jwtResponse = await _dio.get<Map<String, dynamic>>(
@@ -703,11 +741,23 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       final responseModel =
           ClScotiabankPersonasGetSimpleAccountStatementResponse.fromJson(data);
 
-      // Map to ExtractedCreditCardBill
-      return ClScotiabankPersonasCreditCardBillMapper.fromResponseModel(
-        responseModel,
+      final summary =
+          ClScotiabankPersonasCreditCardBillMapper.fromResponseModel(
+            responseModel,
+            periodId,
+            currencyType,
+          );
+      final pdfBase64 = await _getCreditCardBillPdfBase64(
+        credentials,
+        productId,
         periodId,
-        currencyType,
+      );
+      return ExtractedCreditCardBill(
+        periodProviderId: periodId,
+        currencyType: currencyType,
+        summary: summary,
+        transactions: null, // Transactions are not included in this response
+        billDocumentBase64: pdfBase64,
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
@@ -723,8 +773,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
     }
   }
 
-  @override
-  Future<Uint8List> getCreditCardBillPdf(
+  Future<dynamic> _getBillData(
     String credentials,
     String productId,
     String periodId,
@@ -735,8 +784,101 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       if (periodParts.length < 3) {
         throw Exception('Invalid period ID format');
       }
-      final rawPrdoriid = periodParts[0];
+      final prdoriid = periodParts[0];
       final rawBillingDate = periodParts[1]; // DDMMYYYY format
+      final rawCurrencyType = periodParts[2];
+
+      final currencyType = rawCurrencyType == CurrencyType.national.name
+          ? CurrencyType.national
+          : CurrencyType.international;
+
+      // Parse productId to get last 4 digits
+      final productIdMetadata =
+          ClScotiabankPersonasProductMapper.parseProductId(productId);
+      final rawId = productIdMetadata.rawDisplayId;
+      final cardLast4Digits = rawId.length >= 4
+          ? rawId.substring(rawId.length - 4)
+          : rawId;
+
+      Map<String, dynamic> billData;
+      final llamadaReferer =
+          'https://www.scotiabank.cl/mfe-simple-account-statement-web-cl/?tab=saldo&card=$cardLast4Digits';
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+      final llamadaResponse = await _dio.get<Map<String, dynamic>>(
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+        queryParameters: {
+          'TMPL': '/ahorro/tarjeta.json',
+          '_': timestamp.toString(),
+        },
+        options: Options(
+          headers: {
+            ..._headers,
+            'Cookie': credentials,
+            'Referer': llamadaReferer,
+          },
+        ),
+      );
+      final llamada = llamadaResponse.data?['Llamada'] as String? ?? '';
+
+      final fecPag = '00000000';
+
+      if (currencyType == CurrencyType.national) {
+        final billResponse = await _dio.get<Map<String, dynamic>>(
+          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+          queryParameters: {
+            'TMPL': '/visa/estctatarpdfant.json',
+            'TRANS': 'vt_ConsultaEstadoVisaAntNacEnc',
+            'cta': prdoriid,
+            'FecPag': fecPag,
+            'FecFac': rawBillingDate,
+            'Llamada': llamada,
+          },
+          options: Options(headers: {..._headers, 'Cookie': credentials}),
+        );
+        billData = {
+          'lstEstadoNacVisa': billResponse.data?['lstEstadoNacVisaAnt'],
+        };
+      } else {
+        final billResponse = await _dio.get<Map<String, dynamic>>(
+          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+          queryParameters: {
+            'TMPL': '/visa/estctatarpdfintEnc.json',
+            'TRANS': 'vt_EstadoVisaIntEncBanDig',
+            'cta': prdoriid,
+            'FecPag': fecPag,
+            'FecFac': rawBillingDate,
+            'Llamada': llamada,
+          },
+          options: Options(headers: {..._headers, 'Cookie': credentials}),
+        );
+        billData = {
+          'lstEstadoIntVisaAnt': billResponse.data?['lstEstadoIntVisaAntEnc'],
+        };
+      }
+
+      return billData;
+    } on DioException catch (e) {
+      log('Error fetching Scotiabank credit card bill PDF: $e');
+      rethrow;
+    } catch (e) {
+      log('Error fetching Scotiabank credit card bill PDF: $e');
+      rethrow;
+    }
+  }
+
+  Future<String?> _getCreditCardBillPdfBase64(
+    String credentials,
+    String productId,
+    String periodId,
+  ) async {
+    try {
+      final periodParts = periodId.split('|');
+      if (periodParts.length < 3) {
+        throw Exception('Invalid period ID format');
+      }
+
       final rawCurrencyType = periodParts[2];
 
       final currencyType = rawCurrencyType == CurrencyType.national.name
@@ -746,9 +888,11 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       final referer =
           'https://www.scotiabank.cl/mfe-simple-account-statement-web-cl/?tab=saldo';
 
-      // Get JWT token
+      final billData = await _getBillData(credentials, productId, periodId);
+
       final jwtResponse = await _dio.get<Map<String, dynamic>>(
-        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fsecurity%2Fjwt.xml&intends=T18000',
+        'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax',
+        queryParameters: {'TMPL': '/security/jwt.xml', 'intends': 'T18000'},
         options: Options(
           headers: {..._headers, 'Referer': referer, 'Cookie': credentials},
         ),
@@ -758,48 +902,10 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
         throw Exception('Failed to get JWT token');
       }
 
-      // Get bill data
-      Map<String, dynamic> billData;
-      if (currencyType == CurrencyType.national) {
-        final fecPag = '00000000';
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final llamadaResponse = await _dio.get<Map<String, dynamic>>(
-          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fahorro%2Ftarjeta.json&_=$timestamp',
-          options: Options(headers: {..._headers, 'Cookie': credentials}),
-        );
-        final llamada = llamadaResponse.data?['Llamada'] as String? ?? '';
-
-        final billResponse = await _dio.get<Map<String, dynamic>>(
-          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fvisa%2Festctatarpdfant.json&TRANS=vt_ConsultaEstadoVisaAntNacEnc&cta=$rawPrdoriid&FecPag=$fecPag&FecFac=$rawBillingDate&Llamada=$llamada',
-          options: Options(headers: {..._headers, 'Cookie': credentials}),
-        );
-        billData = {
-          'lstEstadoNacVisa': billResponse.data?['lstEstadoNacVisaAnt'],
-        };
-      } else {
-        final fecPag = '00000000';
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final llamadaResponse = await _dio.get<Map<String, dynamic>>(
-          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fahorro%2Ftarjeta.json&_=$timestamp',
-          options: Options(headers: {..._headers, 'Cookie': credentials}),
-        );
-        final llamada = llamadaResponse.data?['Llamada'] as String? ?? '';
-
-        final billResponse = await _dio.get<Map<String, dynamic>>(
-          'https://www.scotiabank.cl/cgi-bin/transac/dotrxajax?TMPL=%2Fvisa%2FestctatarpdfintEnc.json&TRANS=vt_EstadoVisaIntEncBanDig&cta=$rawPrdoriid&FecPag=$fecPag&FecFac=$rawBillingDate&Llamada=$llamada',
-          options: Options(headers: {..._headers, 'Cookie': credentials}),
-        );
-        billData = {
-          'lstEstadoIntVisaAnt': billResponse.data?['lstEstadoIntVisaAntEnc'],
-        };
-      }
-
-      // Determine template
       final template = currencyType == CurrencyType.national
           ? 'estado_cta_trj'
           : 'estado_cta_trj_int';
 
-      // Prepare form data
       final encodedData = jsonEncode(billData);
       final formData = {
         'format': 'pdf',
@@ -808,26 +914,21 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
         'data': encodedData,
       };
 
+      final headers = {
+        'Referer': referer,
+        'Authorization': 'Bearer $token',
+        'Cookie': credentials,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+
       final response = await _dio.post(
         'https://www.scotiabank.cl/app-web-report/getReportSecure',
         data: formData,
-        options: Options(
-          headers: {
-            ..._headers,
-            'Referer': referer,
-            'Authorization': 'Bearer $token',
-          },
-          responseType: ResponseType.bytes,
-        ),
+        options: Options(headers: headers, responseType: ResponseType.bytes),
       );
 
-      return Uint8List.fromList(response.data as List<int>);
+      return base64Encode(response.data as List<int>);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw ConnectionException(
-          ConnectionExceptionType.authCredentialsExpired,
-        );
-      }
       log('Error fetching Scotiabank credit card bill PDF: $e');
       rethrow;
     } catch (e) {
@@ -923,5 +1024,16 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       log('Error fetching Scotiabank credit card unbilled transactions: $e');
       rethrow;
     }
+  }
+
+  Future<ConnectionException?> _convertToConnectionException(Object e) async {
+    if (e is DioException) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 599) {
+        return ConnectionException(
+          ConnectionExceptionType.authCredentialsExpired,
+        );
+      }
+    }
+    return null;
   }
 }

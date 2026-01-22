@@ -247,17 +247,6 @@ class PanConnect {
         }
 
         if (product.type == ProductType.creditCard) {
-          final periods = await panScrapperService.getCreditCardBillPeriods(
-            product.providerId,
-          );
-          extractions.add(
-            Extraction(
-              payload: periods.map((e) => e.toJson()).toList(),
-              params: {'productId': product.providerId},
-              operation: ExtractionOperation.creditCardBillPeriods,
-            ),
-          );
-
           final nationalUnbilledTransactions = await panScrapperService
               .getCreditCardUnbilledTransactions(
                 product.providerId,
@@ -293,6 +282,40 @@ class PanConnect {
               operation: ExtractionOperation.creditCardUnbilledTransactions,
             ),
           );
+
+          final periods = await panScrapperService.getCreditCardBillPeriods(
+            product.providerId,
+          );
+          extractions.add(
+            Extraction(
+              payload: periods.map((e) => e.toJson()).toList(),
+              params: {'productId': product.providerId},
+              operation: ExtractionOperation.creditCardBillPeriods,
+            ),
+          );
+
+          for (final period in periods) {
+            // check if period is in the last 45 days
+            final isInLast45Days = DateTime.parse(
+              period.startDate,
+            ).isAfter(DateTime.now().subtract(Duration(days: 45)));
+            if (isInLast45Days) {
+              final bill = await panScrapperService.getCreditCardBill(
+                product.providerId,
+                period.providerId,
+              );
+              extractions.add(
+                Extraction(
+                  payload: bill.toJson(),
+                  params: {
+                    'productId': product.providerId,
+                    'billPeriodId': period.providerId,
+                  },
+                  operation: ExtractionOperation.creditCardBillDetails,
+                ),
+              );
+            }
+          }
         }
       } catch (e) {
         throw PanConnectException(

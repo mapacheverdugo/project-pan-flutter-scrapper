@@ -9,7 +9,7 @@ part of 'extracted_credit_card_bill.dart';
 ExtractedCreditCardBill _$ExtractedCreditCardBillFromJson(
   Map<String, dynamic> json,
 ) => ExtractedCreditCardBill(
-  periodId: json['periodId'] as String,
+  periodProviderId: json['periodProviderId'] as String,
   currencyType: const CurrencyTypeJsonConverter().fromJson(
     json['currencyType'] as String,
   ),
@@ -25,15 +25,17 @@ ExtractedCreditCardBill _$ExtractedCreditCardBillFromJson(
         ),
       )
       .toList(),
+  billDocumentBase64: json['billDocumentBase64'] as String?,
 );
 
 Map<String, dynamic> _$ExtractedCreditCardBillToJson(
   ExtractedCreditCardBill instance,
 ) => <String, dynamic>{
-  'periodId': instance.periodId,
+  'periodProviderId': instance.periodProviderId,
   'currencyType': const CurrencyTypeJsonConverter().toJson(
     instance.currencyType,
   ),
   'summary': instance.summary?.toJson(),
   'transactions': instance.transactions?.map((e) => e.toJson()).toList(),
+  'billDocumentBase64': instance.billDocumentBase64,
 };
