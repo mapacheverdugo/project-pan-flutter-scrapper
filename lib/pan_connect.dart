@@ -235,86 +235,108 @@ class PanConnect {
     for (final product in products) {
       try {
         if (product.type == ProductType.depositaryAccount) {
-          final transactions = await panScrapperService
-              .getDepositaryAccountTransactions(product.providerId);
-          extractions.add(
-            Extraction(
-              payload: transactions.map((e) => e.toJson()).toList(),
-              params: {'productId': product.providerId},
-              operation: ExtractionOperation.depositaryAccountTransactions,
-            ),
-          );
+          try {
+            final transactions = await panScrapperService
+                .getDepositaryAccountTransactions(product.providerId);
+            extractions.add(
+              Extraction(
+                payload: transactions.map((e) => e.toJson()).toList(),
+                params: {'productId': product.providerId},
+                operation: ExtractionOperation.depositaryAccountTransactions,
+              ),
+            );
+          } catch (e) {
+            debugPrint('Error fetching depositary account transactions: $e');
+          }
         }
 
         if (product.type == ProductType.creditCard) {
-          final nationalUnbilledTransactions = await panScrapperService
-              .getCreditCardUnbilledTransactions(
-                product.providerId,
-                CurrencyType.national,
-              );
-          extractions.add(
-            Extraction(
-              payload: nationalUnbilledTransactions
-                  .map((e) => e.toJson())
-                  .toList(),
-              params: {
-                'productId': product.providerId,
-                'currencyType': CurrencyType.national.name,
-              },
-              operation: ExtractionOperation.creditCardUnbilledTransactions,
-            ),
-          );
+          try {
+            final nationalUnbilledTransactions = await panScrapperService
+                .getCreditCardUnbilledTransactions(
+                  product.providerId,
+                  CurrencyType.national,
+                );
+            extractions.add(
+              Extraction(
+                payload: nationalUnbilledTransactions
+                    .map((e) => e.toJson())
+                    .toList(),
+                params: {
+                  'productId': product.providerId,
+                  'currencyType': CurrencyType.national.name,
+                },
+                operation: ExtractionOperation.creditCardUnbilledTransactions,
+              ),
+            );
+          } catch (e) {
+            debugPrint('Error fetching national unbilled transactions: $e');
+          }
 
-          final internationalUnbilledTransactions = await panScrapperService
-              .getCreditCardUnbilledTransactions(
-                product.providerId,
-                CurrencyType.international,
-              );
-          extractions.add(
-            Extraction(
-              payload: internationalUnbilledTransactions
-                  .map((e) => e.toJson())
-                  .toList(),
-              params: {
-                'productId': product.providerId,
-                'currencyType': CurrencyType.international.name,
-              },
-              operation: ExtractionOperation.creditCardUnbilledTransactions,
-            ),
-          );
+          try {
+            final internationalUnbilledTransactions = await panScrapperService
+                .getCreditCardUnbilledTransactions(
+                  product.providerId,
+                  CurrencyType.international,
+                );
+            extractions.add(
+              Extraction(
+                payload: internationalUnbilledTransactions
+                    .map((e) => e.toJson())
+                    .toList(),
+                params: {
+                  'productId': product.providerId,
+                  'currencyType': CurrencyType.international.name,
+                },
+                operation: ExtractionOperation.creditCardUnbilledTransactions,
+              ),
+            );
+          } catch (e) {
+            debugPrint(
+              'Error fetching international unbilled transactions: $e',
+            );
+          }
 
-          final periods = await panScrapperService.getCreditCardBillPeriods(
-            product.providerId,
-          );
-          extractions.add(
-            Extraction(
-              payload: periods.map((e) => e.toJson()).toList(),
-              params: {'productId': product.providerId},
-              operation: ExtractionOperation.creditCardBillPeriods,
-            ),
-          );
+          try {
+            final periods = await panScrapperService.getCreditCardBillPeriods(
+              product.providerId,
+            );
+            extractions.add(
+              Extraction(
+                payload: periods.map((e) => e.toJson()).toList(),
+                params: {'productId': product.providerId},
+                operation: ExtractionOperation.creditCardBillPeriods,
+              ),
+            );
 
-          for (final period in periods) {
-            // check if period is in the last 45 days
-            final isInLast45Days = DateTime.parse(
-              period.startDate,
-            ).isAfter(DateTime.now().subtract(Duration(days: 45)));
-            if (isInLast45Days) {
-              final bill = await panScrapperService.getCreditCardBill(
-                product.providerId,
-                period.providerId,
-              );
-              extractions.add(
-                Extraction(
-                  payload: bill.toJson(),
-                  params: {
-                    'productId': product.providerId,
-                    'billPeriodId': period.providerId,
-                  },
-                  operation: ExtractionOperation.creditCardBillDetails,
-                ),
-              );
+            for (final period in periods) {
+              try {
+                // check if period is in the last 45 days
+                final isInLast45Days = DateTime.parse(
+                  period.startDate,
+                ).isAfter(DateTime.now().subtract(Duration(days: 45)));
+                if (isInLast45Days) {
+                  final bill = await panScrapperService.getCreditCardBill(
+                    product.providerId,
+                    period.providerId,
+                  );
+                  extractions.add(
+                    Extraction(
+                      payload: bill.toJson(),
+                      params: {
+                        'productId': product.providerId,
+                        'billPeriodId': period.providerId,
+                      },
+                      operation: ExtractionOperation.creditCardBillDetails,
+                    ),
+                  );
+                }
+              } catch (e) {
+                debugPrint('Error fetching credit card bill: $e');
+              }
             }
+          } catch (e) {
+            debugPrint('Error fetching credit card bill periods: $e');
           }
         }
       } catch (e) {
