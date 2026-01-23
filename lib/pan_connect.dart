@@ -325,11 +325,13 @@ class PanConnect {
       }
     }
 
-    await apiService.submitExtractions(
-      extractions: extractions,
-      publicKey: publicKey,
-      linkToken: linkToken,
-    );
+    for (final extraction in extractions) {
+      await apiService.submitExtractions(
+        extractions: [extraction],
+        publicKey: publicKey,
+        linkToken: linkToken,
+      );
+    }
 
     // Update last sync date/time after successful sync
     await storage.updateLastSyncDateTime(connectionId, DateTime.now());
