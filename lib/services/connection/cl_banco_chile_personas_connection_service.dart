@@ -574,17 +574,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
     String productId,
     String periodId,
   ) async {
-    throw UnimplementedError('BancoChile credit card bill not implemented');
-  }
-
-  @override
-  Future<Uint8List> getCreditCardBillPdf(
-    String credentials,
-    String productId,
-    String periodId,
-  ) async {
     try {
-      // Parse periodId: format is "currencyType_rawPeriodId"
       final periodParts = periodId.split('_');
       if (periodParts.length < 2) {
         throw Exception('Invalid period ID format');
@@ -592,6 +582,39 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
       final rawCurrencyType = periodParts[0];
       final rawPeriodId = periodParts[1];
 
+      final currencyType = rawCurrencyType == CurrencyType.national.name
+          ? CurrencyType.national
+          : CurrencyType.international;
+
+      final bytesPdf = await _getCreditCardBillPdfAsBytes(
+        credentials,
+        productId,
+        currencyType,
+        rawPeriodId,
+      );
+      final base64Pdf = base64Encode(bytesPdf);
+      return ExtractedCreditCardBill(
+        periodProviderId: periodId,
+        currencyType: rawCurrencyType == CurrencyType.national.name
+            ? CurrencyType.national
+            : CurrencyType.international,
+        summary: null,
+        transactions: null,
+        billDocumentBase64: base64Pdf,
+      );
+    } catch (e) {
+      log('Error fetching BancoChile credit card bill: $e');
+      rethrow;
+    }
+  }
+
+  Future<Uint8List> _getCreditCardBillPdfAsBytes(
+    String credentials,
+    String productId,
+    CurrencyType currencyType,
+    String rawPeriodId,
+  ) async {
+    try {
       final rawProducts = await _getRawProducts(credentials);
       final rawProductId = productId;
       final card = rawProducts.productos.firstWhere(
@@ -625,10 +648,6 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
       final numeroCuentaUrlDecoded = Uri.decodeComponent(
         billingPeriodsResponse.data?['numeroCuenta'] as String? ?? '',
       );
-
-      final currencyType = rawCurrencyType == CurrencyType.national.name
-          ? CurrencyType.national
-          : CurrencyType.international;
 
       final requestBody = {
         'idTarjeta': card.id,

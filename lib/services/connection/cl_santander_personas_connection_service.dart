@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
@@ -834,11 +833,31 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
     String productId,
     String periodId,
   ) async {
-    throw UnimplementedError('Santander credit card bill not implemented');
+    try {
+      final periodParts = periodId.split('_');
+      final currencyType = periodParts[0] == CurrencyType.national.name
+          ? CurrencyType.national
+          : CurrencyType.international;
+
+      final base64Pdf = await _getCreditCardBillPdfAsBase64(
+        credentials,
+        productId,
+        periodId,
+      );
+      return ExtractedCreditCardBill(
+        periodProviderId: periodId,
+        currencyType: currencyType,
+        summary: null,
+        transactions: null,
+        billDocumentBase64: base64Pdf,
+      );
+    } catch (e) {
+      log('Error fetching Santander credit card bill: $e');
+      rethrow;
+    }
   }
 
-  @override
-  Future<Uint8List> getCreditCardBillPdf(
+  Future<String> _getCreditCardBillPdfAsBase64(
     String credentials,
     String productId,
     String periodId,
@@ -856,7 +875,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       final tokenModel = ClSantanderPersonasTokenModel.fromMap(tokenResponse);
       final rut = tokenModel.crucedeProducto['ESCALARES']['NUMERODOCUMENTO'];
-      final accessToken = tokenModel.accessToken;
+      final accessToken = tokenModel.tokenJwt;
 
       final properties = await _getProperties(await _webviewFactory());
 
@@ -864,7 +883,6 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
       final canalId = properties.canal;
       final canalFisico = properties.canalFisico;
       final canalLogico = properties.canalLogico;
-      final numeroServidor = properties.nroSer;
 
       // Parse productId
       final productParts = productId.split('_');
@@ -895,14 +913,13 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
           'RutUsuario': rut,
           'IpCliente': '',
           'InfoDispositivo': 'InfoDispositivo',
-          'InfoGeneral': {'NumeroServidor': numeroServidor},
         },
         'Entrada': {
-          'RutCliente': rut,
-          'CodEntidad': rawEntityId,
+          'RutCliente': '',
+          'CodEntidad': rawContractId,
           'CentroAlt': rawCenterId,
-          'Moneda': period.currency,
-          'Cuenta': rawContractId,
+          'Moneda': period.currency.isoLetters,
+          'Cuenta': rawEntityId,
           'Fecha': period.startDate.replaceAll('-', ''),
         },
       };
@@ -914,7 +931,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
           headers: {
             'accept': 'application/json, text/plain, */*',
             'accept-language': 'es-419,es;q=0.6',
-            'access-token': accessToken,
+            'Access-Token': accessToken,
             'content-type': 'application/json',
             'origin': 'https://mibanco.santander.cl',
             'priority': 'u=1, i',
@@ -952,9 +969,7 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
         throw Exception('No PDF data in response');
       }
 
-      // Decode base64 to bytes
-      final bytes = base64Decode(imgNbs64);
-      return Uint8List.fromList(bytes);
+      return imgNbs64;
     } catch (e) {
       log('Error fetching Santander credit card bill PDF: $e');
       rethrow;
