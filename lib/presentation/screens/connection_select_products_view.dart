@@ -5,9 +5,14 @@ import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/product_card.dart';
 
 class ConnectionSelectProductsView extends StatefulWidget {
-  const ConnectionSelectProductsView({super.key, required this.onContinue});
+  const ConnectionSelectProductsView({
+    super.key,
+    required this.onContinue,
+    this.forceAllSelected = true,
+  });
 
   final Function(List<String> productIds) onContinue;
+  final bool forceAllSelected;
 
   @override
   State<ConnectionSelectProductsView> createState() =>
@@ -37,7 +42,9 @@ class _ConnectionSelectProductsViewState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Seleccionar cuentas',
+                    widget.forceAllSelected
+                        ? 'Confirmar cuentas'
+                        : 'Seleccionar cuentas',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -45,7 +52,9 @@ class _ConnectionSelectProductsViewState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '$productName compartirá con $clientName solamente la información de los productos de $institutionName que selecciones.',
+                    widget.forceAllSelected
+                        ? '$productName compartirá con $clientName la información de los siguiente productos de $institutionName.'
+                        : '$productName compartirá con $clientName solamente la información de los productos de $institutionName que selecciones.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -60,7 +69,8 @@ class _ConnectionSelectProductsViewState
                         return ProductCard(
                           product: product,
                           isSelected: isSelected,
-                          onSelected: !isLoading
+                          isSelectable: !widget.forceAllSelected,
+                          onSelected: !isLoading && !widget.forceAllSelected
                               ? ({required bool isSelected}) {
                                   final currentSelected = List<String>.from(
                                     selectedProductIds,

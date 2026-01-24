@@ -588,7 +588,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
   }
 
   Future<void> _openPdf(ExtractedCreditCardBill bill) async {
-    final pdfBase64 = bill.pdfBase64;
+    final pdfBase64 = bill.billDocumentBase64;
     if (pdfBase64 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('PDF not available for unbilled period')),

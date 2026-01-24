@@ -40,6 +40,7 @@ LinkIntentDataModel _$LinkIntentDataModelFromJson(Map<String, dynamic> json) =>
             ),
       taskId: json['taskId'] as String?,
       clientName: json['clientName'] as String?,
+      clientLogoUrl: json['clientLogoUrl'] as String?,
     );
 
 Map<String, dynamic> _$LinkIntentDataModelToJson(
@@ -58,6 +59,7 @@ Map<String, dynamic> _$LinkIntentDataModelToJson(
   'prefilledUsername': instance.prefilledUsername,
   'taskId': instance.taskId,
   'clientName': instance.clientName,
+  'clientLogoUrl': instance.clientLogoUrl,
 };
 
 Value? _$JsonConverterFromJson<Json, Value>(

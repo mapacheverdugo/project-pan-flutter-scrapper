@@ -43,34 +43,49 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
   bool _isVisible = false;
 
   String? _validator(String? v) {
-    if (!widget.ignoreBlank && (v != null && v.isNotEmpty)) {
-      return null;
+    if (!widget.ignoreBlank && (v == null || v.isEmpty)) {
+      return 'Debe ingresar su contraseña';
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final inputDecoration = widget.decoration ??
+    final showClear = widget.clearable && _controller.text.isNotEmpty;
+    var inputDecoration =
+        widget.decoration ??
         InputDecoration(
-          hintText: "Contraseña",
+          labelText: 'Contraseña',
           border: const OutlineInputBorder(),
-          suffixIcon: widget.clearable && _controller.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.remove_red_eye),
-                  onPressed: () {
-                    _controller.clear();
-                    _currentValue = "";
-                    widget.onChanged?.call(_currentValue);
-                  },
-                )
-              : IconButton(
-                  onPressed: () => setState(() => _isVisible = !_isVisible),
-                  icon: Icon(_isVisible
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
-                ),
         );
+    inputDecoration = inputDecoration.copyWith(
+      suffixIcon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_controller.text.isNotEmpty) ...[
+            IconButton(
+              icon: Icon(
+                _isVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+              ),
+              onPressed: () => setState(() => _isVisible = !_isVisible),
+            ),
+          ],
+          if (showClear) ...[
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () {
+                _controller.clear();
+                _currentValue = "";
+                widget.onChanged?.call(_currentValue);
+                setState(() {});
+              },
+            ),
+          ],
+        ],
+      ),
+    );
 
     return TextFormField(
       decoration: inputDecoration,
@@ -82,6 +97,7 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
       onChanged: (v) {
         _currentValue = v;
         widget.onChanged?.call(_currentValue);
+        if (widget.clearable) setState(() {});
       },
       autofillHints: const [AutofillHints.password],
       autovalidateMode: widget.autovalidateMode,

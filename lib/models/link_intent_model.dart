@@ -48,6 +48,9 @@ class LinkIntentDataModel {
   @JsonKey(name: 'clientName')
   final String? clientName;
 
+  @JsonKey(name: 'clientLogoUrl')
+  final String? clientLogoUrl;
+
   LinkIntentDataModel({
     required this.linkWidgetToken,
     required this.mode,
@@ -59,6 +62,7 @@ class LinkIntentDataModel {
     this.prefilledUsername,
     this.taskId,
     this.clientName,
+    this.clientLogoUrl,
   });
 
   factory LinkIntentDataModel.fromJson(Map<String, dynamic> json) =>
@@ -78,6 +82,7 @@ class LinkIntentDataModel {
       prefilledUsername: prefilledUsername?.toEntity(),
       taskId: taskId,
       clientName: clientName,
+      clientLogoUrl: clientLogoUrl,
     );
   }
 }

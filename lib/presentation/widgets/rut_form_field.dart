@@ -45,8 +45,11 @@ class _RutFormFieldState extends State<RutFormField> {
   Rut? _currentValue;
 
   String? _validator(String? v) {
-    if (!widget.ignoreBlank && (v != null && v.isNotEmpty)) {
-      return null;
+    if (!widget.ignoreBlank && (v == null || v.isEmpty)) {
+      return 'Debe ingresar su RUT';
+    }
+    if (!Rut(v!).isValid) {
+      return 'El RUT ingresado no es válido';
     }
     return null;
   }
@@ -76,6 +79,7 @@ class _RutFormFieldState extends State<RutFormField> {
       controller: _controller,
       focusNode: _focusNode,
       autocorrect: false,
+
       textInputAction: widget.textInputAction,
       enabled: widget.enabled,
       autofillHints: const [AutofillHints.username],

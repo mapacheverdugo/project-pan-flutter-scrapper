@@ -11,6 +11,7 @@ class LinkIntent {
   final PrefilledUsername? prefilledUsername;
   final String? taskId;
   final String? clientName;
+  final String? clientLogoUrl;
 
   const LinkIntent({
     required this.linkWidgetToken,
@@ -23,6 +24,7 @@ class LinkIntent {
     this.prefilledUsername,
     this.taskId,
     this.clientName,
+    this.clientLogoUrl,
   });
 }
 

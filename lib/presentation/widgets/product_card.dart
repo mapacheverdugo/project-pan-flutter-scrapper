@@ -7,12 +7,14 @@ class ProductCard extends StatelessWidget {
   final ExtractedProductModel product;
   final bool isSelected;
   final Function({required bool isSelected})? onSelected;
+  final bool isSelectable;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.isSelected,
     required this.onSelected,
+    this.isSelectable = true,
   });
 
   String get _lastFourDigits =>
@@ -26,16 +28,16 @@ class ProductCard extends StatelessWidget {
   String? get _productBalances {
     final availableAmount = product.availableAmount;
     if (availableAmount != null) {
-      return availableAmount.formattedDependingOnCurrency;
+      return availableAmount.formattedWithCurrency;
     }
     final creditBalances = product.creditBalances;
     if (creditBalances != null && creditBalances.isNotEmpty) {
       return creditBalances
           .map(
             (creditBalance) =>
-                creditBalance.availableAmountModel.formattedDependingOnCurrency,
+                creditBalance.availableAmountModel.formattedWithCurrency,
           )
-          .join(' | ');
+          .join('  |  ');
     }
     return null;
   }
@@ -62,16 +64,18 @@ class ProductCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Checkbox(
-              value: isSelected,
+            if (isSelectable) ...[
+              Checkbox(
+                value: isSelected,
 
-              onChanged: onSelected != null
-                  ? (value) {
-                      onSelected!(isSelected: !isSelected);
-                    }
-                  : null,
-            ),
-            const SizedBox(width: 12),
+                onChanged: onSelected != null
+                    ? (value) {
+                        onSelected!(isSelected: !isSelected);
+                      }
+                    : null,
+              ),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

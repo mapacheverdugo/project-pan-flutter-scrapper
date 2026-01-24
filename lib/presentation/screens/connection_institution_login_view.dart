@@ -28,6 +28,8 @@ class _ConnectionInstitutionLoginViewState
   String? _username;
   String? _password;
 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
     final connectionNotifier = ConnectionProvider.of(context);
@@ -40,99 +42,110 @@ class _ConnectionInstitutionLoginViewState
       slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: AutofillGroup(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (institution != null) ...[
-                  Center(
-                    child: InstitutionAvatar(
-                      institution: institution,
-                      width: 56,
-                      height: 56,
+          child: Form(
+            key: _formKey,
+            child: AutofillGroup(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (institution != null) ...[
+                    Center(
+                      child: InstitutionAvatar(
+                        institution: institution,
+                        width: 56,
+                        height: 56,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  // Title
+                  Text(
+                    'Inicia sesión en $institutionName',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Instructions
+                  Text(
+                    'Ingresa tus credenciales de $institutionName para conectar tu cuenta a $clientName.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 24),
+                  RutFormField(
+                    decoration: InputDecoration(labelText: 'RUT'),
+                    enabled: !isLoading,
+                    ignoreBlank: false,
+                    onChanged: (value) {
+                      setState(() {
+                        _username = value?.clean;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  PasswordFormField(
+                    decoration: InputDecoration(labelText: 'Contraseña'),
+                    enabled: !isLoading,
+                    ignoreBlank: false,
+                    onChanged: (value) {
+                      setState(() {
+                        _password = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Spacer(),
+                  Text(
+                    'Al proporcionar tus credenciales, permites que $productName acceda a tus datos financieros.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 24),
-                ],
-                // Title
-                Text(
-                  'Inicia sesión en $institutionName',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Instructions
-                Text(
-                  'Ingresa tus credenciales de $institutionName para conectar tu cuenta a $clientName.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                RutFormField(
-                  decoration: InputDecoration(labelText: 'RUT'),
-                  enabled: !isLoading,
-                  onChanged: (value) {
-                    setState(() {
-                      _username = value?.clean;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                PasswordFormField(
-                  decoration: InputDecoration(labelText: 'Contraseña'),
-                  enabled: !isLoading,
-                  onChanged: (value) {
-                    setState(() {
-                      _password = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Spacer(),
-                Text(
-                  'Al proporcionar tus credenciales, permites que $productName acceda a tus datos financieros y aceptas que $productName o tu institución puedan enviarte un código de acceso por SMS según nuestros o sus términos de SMS.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: DefaultButton(
-                    text: 'Enviar',
-                    size: DefaultButtonSize.lg,
-                    isLoading: isLoading,
-                    onPressed: () {
-                      if (_username == null || _password == null) {
-                        return;
-                      }
+                  SizedBox(
+                    width: double.infinity,
+                    child: DefaultButton(
+                      text: 'Enviar',
+                      size: DefaultButtonSize.lg,
+                      isLoading: isLoading,
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          if (_username == null || _password == null) {
+                            return;
+                          }
 
-                      widget.onLoginPressed(context, _username!, _password!);
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Center(
-                  child: GestureDetector(
-                    onTap: isLoading
-                        ? null
-                        : () {
-                            // TODO: Handle reset password
-                          },
-                    child: Text(
-                      'Restablecer contraseña',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                          widget.onLoginPressed(
+                            context,
+                            _username!,
+                            _password!,
+                          );
+                        }
+                      },
                     ),
                   ),
-                ),
-              ],
+                  /* const SizedBox(height: 16),
+            
+                  Center(
+                    child: GestureDetector(
+                      onTap: isLoading
+                          ? null
+                          : () {
+                              // TODO: Handle reset password
+                            },
+                      child: Text(
+                        'Restablecer contraseña',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ), */
+                ],
+              ),
             ),
           ),
         ),

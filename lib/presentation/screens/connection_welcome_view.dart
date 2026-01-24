@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:pan_scrapper/constants/strings.dart';
 import 'package:pan_scrapper/presentation/controllers/connection_notifier.dart';
 import 'package:pan_scrapper/presentation/widgets/default_button.dart';
 import 'package:pan_scrapper/presentation/widgets/default_card.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ConnectionWelcomeView extends StatefulWidget {
   const ConnectionWelcomeView({super.key, required this.onContinue});
@@ -18,6 +22,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
   Widget build(BuildContext context) {
     final connectionNotifier = ConnectionProvider.of(context);
     final clientName = connectionNotifier.value.linkIntent.clientName;
+    final clientLogoUrl = connectionNotifier.value.linkIntent.clientLogoUrl;
 
     return CustomScrollView(
       slivers: [
@@ -30,27 +35,37 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
+                    clipBehavior: Clip.hardEdge,
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.black,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.flight_takeoff,
-                      color: Colors.white,
+                    child: Image.network(
+                      'https://firebasestorage.googleapis.com/v0/b/project-pan-5074b.firebasestorage.app/o/kane-connect-logo.png?alt=media',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF006EFF),
-                      borderRadius: BorderRadius.circular(8),
+                  if (clientLogoUrl != null) ...[
+                    const SizedBox(width: 12),
+
+                    Container(
+                      clipBehavior: Clip.hardEdge,
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Image.network(
+                        clientLogoUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                    child: const Icon(Icons.grid_view, color: Colors.white),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 24),
@@ -134,11 +149,47 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
               ),
               const SizedBox(height: 16),
               Spacer(),
-              Text(
-                'Al continuar, aceptas la Política de Privacidad de $productName y recibir actualizaciones',
+              RichText(
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                text: TextSpan(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Al continuar, aceptas la '),
+                    TextSpan(
+                      text: 'Política de Privacidad',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Theme.of(context).colorScheme.primary,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => unawaited(
+                          launchUrl(
+                            Uri.parse('https://kaneapp.cl/privacidad'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                    ),
+                    TextSpan(text: ' de $productName y los '),
+                    TextSpan(
+                      text: 'Términos y Condiciones',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Theme.of(context).colorScheme.primary,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => unawaited(
+                          launchUrl(
+                            Uri.parse('https://kaneapp.cl/terminos'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                    ),
+                    const TextSpan(text: ' de uso.'),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
