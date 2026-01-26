@@ -97,14 +97,15 @@ class _ConnectionInstitutionLoginViewState
                     },
                   ),
                   const SizedBox(height: 16),
-                  Spacer(),
+
                   Text(
-                    'Al proporcionar tus credenciales, permites que $productName acceda a tus datos financieros.',
+                    'Tus credenciales nunca son almacenadas en nuestros servidores, la conexión inicial y las sincronizaciones posteriores se realizan de forma segura unicamente en este dispositivo.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  Spacer(),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -127,23 +128,14 @@ class _ConnectionInstitutionLoginViewState
                       },
                     ),
                   ),
-                  /* const SizedBox(height: 16),
-            
-                  Center(
-                    child: GestureDetector(
-                      onTap: isLoading
-                          ? null
-                          : () {
-                              // TODO: Handle reset password
-                            },
-                      child: Text(
-                        'Restablecer contraseña',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Al proporcionar tus credenciales, permites que $productName acceda a tus datos financieros.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  ), */
+                  ),
                 ],
               ),
             ),

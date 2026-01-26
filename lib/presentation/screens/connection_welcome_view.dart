@@ -136,7 +136,7 @@ class _ConnectionWelcomeViewState extends State<ConnectionWelcomeView> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '$productName usa el mejor cifrado para ayudar a proteger tus datos',
+                                '$productName usa las mejores prácticas de seguridad para proteger tus datos',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
