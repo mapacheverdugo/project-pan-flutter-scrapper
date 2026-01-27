@@ -725,38 +725,47 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
         throw Exception('Failed to get JWT token');
       }
 
-      // Get account statement
-      final response = await _dio.get<Map<String, dynamic>>(
-        'https://www.scotiabank.cl/on-prem/bff-simple-account-statement-web-cl/v1/credit/$base64CardId/getSimpleAccountStatement',
-        queryParameters: {'period': periodParam, 'currency': currencyParam},
-        options: Options(
-          headers: {
-            ..._headers,
-            'Accept': 'application/json',
-            'Accept-Language': 'es-419,es;q=0.9',
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-            'Referer': referer,
-            'Cookie': credentials,
-          },
-        ),
-      );
+      ExtractedCreditCardBillSummary? summary;
 
-      final data = response.data;
-      if (data == null) {
-        throw Exception('Empty response from account statement endpoint');
+      try {
+        // Get account statement
+        final response = await _dio.get<Map<String, dynamic>>(
+          'https://www.scotiabank.cl/on-prem/bff-simple-account-statement-web-cl/v1/credit/$base64CardId/getSimpleAccountStatement',
+          queryParameters: {'period': periodParam, 'currency': currencyParam},
+          options: Options(
+            headers: {
+              ..._headers,
+              'Accept': 'application/json',
+              'Accept-Language': 'es-419,es;q=0.9',
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+              'Referer': referer,
+              'Cookie': credentials,
+            },
+          ),
+        );
+
+        final data = response.data;
+        if (data == null) {
+          throw Exception('Empty response from account statement endpoint');
+        }
+
+        // Parse response
+        final responseModel =
+            ClScotiabankPersonasGetSimpleAccountStatementResponse.fromJson(
+              data,
+            );
+
+        summary = ClScotiabankPersonasCreditCardBillMapper.fromResponseModel(
+          responseModel,
+          periodId,
+          currencyType,
+        );
+      } catch (e) {
+        log('Error fetching Scotiabank credit card bill summary: $e');
+        summary = null;
       }
 
-      // Parse response
-      final responseModel =
-          ClScotiabankPersonasGetSimpleAccountStatementResponse.fromJson(data);
-
-      final summary =
-          ClScotiabankPersonasCreditCardBillMapper.fromResponseModel(
-            responseModel,
-            periodId,
-            currencyType,
-          );
       final pdfBase64 = await _getCreditCardBillPdfBase64(
         credentials,
         productId,
