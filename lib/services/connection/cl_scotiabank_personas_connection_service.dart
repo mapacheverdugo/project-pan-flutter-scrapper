@@ -679,7 +679,17 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       );
 
       final l09000 = sessionResponse.data?['L09000'] as Map<String, dynamic>?;
-      final prdArray = l09000?['prd'] as List<dynamic>? ?? [];
+
+      var prdArray = [];
+      final prd = l09000?['prd'];
+
+      if (prd != null) {
+        if (prd is List<dynamic>) {
+          prdArray = prd;
+        } else if (prd is String) {
+          prdArray = [prd];
+        }
+      }
 
       // Find the prd string that ends with the same 4 digits as the product
       String? matchingPrd;
