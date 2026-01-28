@@ -132,6 +132,16 @@ class PanScrapperService {
     return credentials;
   }
 
+  Future<String> reAuth() async {
+    final credentials = await _client.auth(
+      connection.rawUsername,
+      connection.password,
+    );
+
+    await _storage.saveConnectionCredentials(connection.id, credentials);
+    return credentials;
+  }
+
   Future<List<ExtractedProductModel>> getProducts() async {
     return authenticatedWrapper(connection.id, _client.getProducts);
   }

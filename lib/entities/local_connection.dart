@@ -6,6 +6,7 @@ class LocalConnection {
   final String rawUsername;
   final String password;
   final DateTime? lastSyncDateTime;
+  final DateTime? lastFullSyncDateTime;
 
   LocalConnection({
     required this.id,
@@ -13,5 +14,6 @@ class LocalConnection {
     required this.rawUsername,
     required this.password,
     this.lastSyncDateTime,
+    this.lastFullSyncDateTime,
   });
 }

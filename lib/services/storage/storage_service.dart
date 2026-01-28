@@ -15,7 +15,10 @@ abstract class StorageService {
   Future<bool> hasConnections();
   Future<void> deleteConnection(String id);
   Future<void> updateLastSyncDateTime(String connectionId, DateTime dateTime);
-
+  Future<void> updateLastFullSyncDateTime(
+    String connectionId,
+    DateTime dateTime,
+  );
   Future<void> saveConnectionCredentials(
     String connectionId,
     String credentials,
@@ -83,10 +86,15 @@ class StorageServiceImpl extends StorageService {
   }
 
   @override
-  Future<void> updateLastSyncDateTime(String connectionId, DateTime dateTime) async {
+  Future<void> updateLastSyncDateTime(
+    String connectionId,
+    DateTime dateTime,
+  ) async {
     final currentConnections = await getSavedConnections();
-    final connectionIndex = currentConnections.indexWhere((e) => e.id == connectionId);
-    
+    final connectionIndex = currentConnections.indexWhere(
+      (e) => e.id == connectionId,
+    );
+
     if (connectionIndex == -1) {
       throw Exception('Connection not found');
     }
@@ -97,6 +105,36 @@ class StorageServiceImpl extends StorageService {
       rawUsername: currentConnections[connectionIndex].rawUsername,
       password: currentConnections[connectionIndex].password,
       lastSyncDateTime: dateTime,
+      lastFullSyncDateTime:
+          currentConnections[connectionIndex].lastFullSyncDateTime,
+    );
+
+    currentConnections[connectionIndex] = updatedConnection;
+    final newConnectionsJson = jsonEncode(currentConnections);
+    await _storage.write(key: connectionsKey, value: newConnectionsJson);
+  }
+
+  @override
+  Future<void> updateLastFullSyncDateTime(
+    String connectionId,
+    DateTime dateTime,
+  ) async {
+    final currentConnections = await getSavedConnections();
+    final connectionIndex = currentConnections.indexWhere(
+      (e) => e.id == connectionId,
+    );
+
+    if (connectionIndex == -1) {
+      throw Exception('Connection not found');
+    }
+
+    final updatedConnection = LocalConnectionModel(
+      id: currentConnections[connectionIndex].id,
+      institutionCode: currentConnections[connectionIndex].institutionCode,
+      rawUsername: currentConnections[connectionIndex].rawUsername,
+      password: currentConnections[connectionIndex].password,
+      lastSyncDateTime: currentConnections[connectionIndex].lastSyncDateTime,
+      lastFullSyncDateTime: dateTime,
     );
 
     currentConnections[connectionIndex] = updatedConnection;

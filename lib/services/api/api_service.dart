@@ -23,6 +23,10 @@ abstract class ApiService {
     required String linkToken,
     required String publicKey,
   });
+  Future<Map<String, String>> validateSyncTokens({
+    required List<String> syncTokens,
+    required String publicKey,
+  });
   Future<void> submitExtractions({
     required List<Extraction> extractions,
     required String linkToken,
@@ -209,5 +213,22 @@ class ApiServiceImpl extends ApiService {
     }
 
     return data;
+  }
+
+  @override
+  Future<Map<String, String>> validateSyncTokens({
+    required List<String> syncTokens,
+    required String publicKey,
+  }) async {
+    final results = await Future.wait(
+      syncTokens.map((e) async {
+        final result = await validateLinkToken(
+          linkToken: e,
+          publicKey: publicKey,
+        );
+        return MapEntry(e, result);
+      }),
+    );
+    return Map.fromEntries(results);
   }
 }

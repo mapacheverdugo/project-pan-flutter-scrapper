@@ -192,7 +192,28 @@ class PanConnect {
       throw PanConnectException(PanConnectExceptionType.connectionNotFound);
     }
 
-    // Check minimum sync interval
+    await _checkMinimumSyncInterval(connection.toEntity());
+
+    final panScrapperService = PanScrapperService(
+      connection: connection.toEntity(),
+    );
+
+    final needFullSync = await _shouldSyncByFullSync(connection.toEntity());
+
+    await _syncLocalConnection(
+      apiService,
+      storage,
+      panScrapperService,
+      publicKey: publicKey,
+      linkToken: linkToken,
+      connectionId: connectionId,
+      forceFullSync: needFullSync,
+    );
+  }
+
+  static Future<void> _checkMinimumSyncInterval(
+    LocalConnection connection,
+  ) async {
     final minimumInterval =
         connection.institutionCode.minimumSyncIntervalMinutes;
 
@@ -216,11 +237,97 @@ class PanConnect {
         );
       }
     }
+  }
 
-    final panScrapperService = PanScrapperService(
-      connection: connection.toEntity(),
+  static Future<bool> _shouldSyncByFullSync(LocalConnection connection) async {
+    return connection.lastFullSyncDateTime == null ||
+        connection.lastFullSyncDateTime!.isBefore(
+          DateTime.now().subtract(
+            Duration(
+              minutes: connection.institutionCode.maxMinutesToTriggerFullSync,
+            ),
+          ),
+        );
+  }
+
+  static Future<void> syncLocalConnections(
+    List<String> syncTokens,
+    String publicKey, {
+    bool ignoreMinimumSyncInterval = false,
+    void Function(String syncToken)? onStart,
+    void Function(String syncToken, Object? error)? onError,
+    void Function(String syncToken)? onSuccess,
+  }) async {
+    final dio = Dio();
+    final apiService = ApiServiceImpl(dio);
+    final storage = StorageServiceImpl();
+
+    final tasks = <Future<void>>[];
+
+    final syncTokenToConnectionId = await apiService.validateSyncTokens(
+      syncTokens: syncTokens,
+      publicKey: publicKey,
     );
 
+    for (final entry in syncTokenToConnectionId.entries) {
+      final connectionId = entry.value;
+      final syncToken = entry.key;
+      final connection = await storage.getConnectionById(connectionId);
+
+      if (connection == null) {
+        onError?.call(
+          syncToken,
+          PanConnectException(PanConnectExceptionType.connectionNotFound),
+        );
+        continue;
+      }
+
+      if (!ignoreMinimumSyncInterval) {
+        await _checkMinimumSyncInterval(connection.toEntity());
+      }
+
+      final panScrapperService = PanScrapperService(
+        connection: connection.toEntity(),
+      );
+
+      try {
+        onStart?.call(syncToken);
+        await panScrapperService.reAuth();
+      } catch (e) {
+        onError?.call(syncToken, e);
+        continue;
+      }
+
+      final needFullSync = await _shouldSyncByFullSync(connection.toEntity());
+
+      Future<void> task = _syncLocalConnection(
+        apiService,
+        storage,
+        panScrapperService,
+        publicKey: publicKey,
+        linkToken: syncToken,
+        connectionId: connectionId,
+        forceFullSync: needFullSync,
+        onSuccess: () => onSuccess?.call(syncToken),
+      );
+      tasks.add(task);
+    }
+
+    if (tasks.isNotEmpty) {
+      await Future.wait(tasks);
+    }
+  }
+
+  static Future<void> _syncLocalConnection(
+    ApiService apiService,
+    StorageService storage,
+    PanScrapperService panScrapperService, {
+    required String publicKey,
+    required String linkToken,
+    required String connectionId,
+    bool forceFullSync = false,
+    VoidCallback? onSuccess,
+  }) async {
     final extractions = <Extraction>[];
 
     final products = await panScrapperService.getProducts();
@@ -347,15 +454,17 @@ class PanConnect {
       }
     }
 
-    for (final extraction in extractions) {
-      await apiService.submitExtractions(
-        extractions: [extraction],
-        publicKey: publicKey,
-        linkToken: linkToken,
-      );
+    await apiService.submitExtractions(
+      extractions: extractions,
+      publicKey: publicKey,
+      linkToken: linkToken,
+    );
+
+    await storage.updateLastSyncDateTime(connectionId, DateTime.now());
+    if (forceFullSync) {
+      await storage.updateLastFullSyncDateTime(connectionId, DateTime.now());
     }
 
-    // Update last sync date/time after successful sync
-    await storage.updateLastSyncDateTime(connectionId, DateTime.now());
+    onSuccess?.call();
   }
 }

@@ -12,6 +12,8 @@ class LocalConnectionModel {
   final String password;
   @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
   final DateTime? lastSyncDateTime;
+  @JsonKey(fromJson: _dateTimeFromJson, toJson: _dateTimeToJson)
+  final DateTime? lastFullSyncDateTime;
 
   LocalConnectionModel({
     required this.id,
@@ -19,6 +21,7 @@ class LocalConnectionModel {
     required this.rawUsername,
     required this.password,
     this.lastSyncDateTime,
+    this.lastFullSyncDateTime,
   });
 
   static DateTime? _dateTimeFromJson(String? json) =>
@@ -37,6 +40,7 @@ class LocalConnectionModel {
         rawUsername: connection.rawUsername,
         password: connection.password,
         lastSyncDateTime: connection.lastSyncDateTime,
+        lastFullSyncDateTime: connection.lastFullSyncDateTime,
       );
 
   Map<String, dynamic> toJson() => _$LocalConnectionModelToJson(this);
@@ -47,5 +51,6 @@ class LocalConnectionModel {
     rawUsername: rawUsername,
     password: password,
     lastSyncDateTime: lastSyncDateTime,
+    lastFullSyncDateTime: lastFullSyncDateTime,
   );
 }

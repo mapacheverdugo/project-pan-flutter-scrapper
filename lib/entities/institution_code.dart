@@ -15,11 +15,18 @@ extension InstitutionCodeExtension on InstitutionCode {
   int? get minimumSyncIntervalMinutes {
     switch (this) {
       case InstitutionCode.clSantanderPersonas:
-        return 10; // 1 hour
+        return 30; // 1 hour
       case InstitutionCode.unknown:
         return null;
       default:
         return 10; // 10 minutes for all other institutions
+    }
+  }
+
+  int get maxMinutesToTriggerFullSync {
+    switch (this) {
+      default:
+        return 60 * 24; // 1 day
     }
   }
 }
