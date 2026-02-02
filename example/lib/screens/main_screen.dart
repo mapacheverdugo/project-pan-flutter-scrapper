@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:example/screens/connection_details_screen.dart';
 import 'package:example/widget/local_connections.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
@@ -171,6 +172,7 @@ class _MainScreenState extends State<MainScreen> {
                       log('exchangeToken: $exchangeToken');
                       log('username: $username');
                     },
+                    headless: kDebugMode,
                   );
                 },
                 child: Text('Launch'),

@@ -272,45 +272,50 @@ class PanConnect {
     for (final entry in syncTokenToConnectionId.entries) {
       final connectionId = entry.value;
       final syncToken = entry.key;
-      final connection = await storage.getConnectionById(connectionId);
-
-      if (connection == null) {
-        onError?.call(
-          syncToken,
-          PanConnectException(PanConnectExceptionType.connectionNotFound),
-        );
-        continue;
-      }
-
-      if (!ignoreMinimumSyncInterval) {
-        await _checkMinimumSyncInterval(connection.toEntity());
-      }
-
-      final panScrapperService = PanScrapperService(
-        connection: connection.toEntity(),
-      );
-
       try {
-        onStart?.call(syncToken);
-        await panScrapperService.reAuth();
+        final connection = await storage.getConnectionById(connectionId);
+
+        if (connection == null) {
+          onError?.call(
+            syncToken,
+            PanConnectException(PanConnectExceptionType.connectionNotFound),
+          );
+          continue;
+        }
+
+        if (!ignoreMinimumSyncInterval) {
+          await _checkMinimumSyncInterval(connection.toEntity());
+        }
+
+        final panScrapperService = PanScrapperService(
+          connection: connection.toEntity(),
+        );
+
+        try {
+          onStart?.call(syncToken);
+          await panScrapperService.reAuth();
+        } catch (e) {
+          onError?.call(syncToken, e);
+          continue;
+        }
+
+        final needFullSync = await _shouldSyncByFullSync(connection.toEntity());
+
+        Future<void> task = _syncLocalConnection(
+          apiService,
+          storage,
+          panScrapperService,
+          publicKey: publicKey,
+          linkToken: syncToken,
+          connectionId: connectionId,
+          forceFullSync: needFullSync,
+          onSuccess: () => onSuccess?.call(syncToken),
+        );
+        tasks.add(task);
       } catch (e) {
         onError?.call(syncToken, e);
         continue;
       }
-
-      final needFullSync = await _shouldSyncByFullSync(connection.toEntity());
-
-      Future<void> task = _syncLocalConnection(
-        apiService,
-        storage,
-        panScrapperService,
-        publicKey: publicKey,
-        linkToken: syncToken,
-        connectionId: connectionId,
-        forceFullSync: needFullSync,
-        onSuccess: () => onSuccess?.call(syncToken),
-      );
-      tasks.add(task);
     }
 
     if (tasks.isNotEmpty) {
