@@ -1,7 +1,11 @@
 import 'package:pan_scrapper/entities/index.dart';
 
 abstract class ConnectionService {
-  Future<String> auth(String username, String password);
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  });
   Future<List<ExtractedProductModel>> getProducts(String credentials);
   Future<List<ExtractedTransaction>> getDepositaryAccountTransactions(
     String credentials,

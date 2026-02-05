@@ -36,7 +36,11 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
   };
 
   @override
-  Future<String> auth(String username, String password) async {
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final completer = Completer<String>();
     final webview = await _webviewFactory();
 
@@ -45,6 +49,7 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
 
       await webview.navigate(
         URLRequest(url: WebUri("https://www.scotiabank.cl/login/personas/")),
+        timeout: timeout,
       );
 
       webview.addAjaxResponseListener(
@@ -63,13 +68,16 @@ class ClScotiabankPersonasConnectionService extends ConnectionService {
       final passwordSelector =
           "#login-retail-content-card-form-input-password-input";
 
-      await webview.waitForSelector(rutSelector);
+      await webview.waitForSelector(rutSelector, timeout: timeout);
 
       log("ScotiabankService auth selector $rutSelector founded");
 
-      await webview.type(rutSelector, username);
-      await webview.type(passwordSelector, password);
-      await webview.tap("#login-retail-content-card-form > button");
+      await webview.type(rutSelector, username, timeout: timeout);
+      await webview.type(passwordSelector, password, timeout: timeout);
+      await webview.tap(
+        "#login-retail-content-card-form > button",
+        timeout: timeout,
+      );
 
       log("ScotiabankService auth waiting for completer...");
 

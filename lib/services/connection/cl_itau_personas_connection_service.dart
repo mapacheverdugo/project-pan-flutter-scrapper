@@ -23,7 +23,11 @@ class ClItauPersonasConnectionService extends ConnectionService {
   ClItauPersonasConnectionService(this._dio, this._webviewFactory);
 
   @override
-  Future<String> auth(String username, String password) async {
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final completer = Completer<String>();
     final webview = await _webviewFactory();
 

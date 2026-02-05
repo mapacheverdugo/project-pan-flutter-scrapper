@@ -23,7 +23,11 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
   ClBancoChilePersonasConnectionService(this._dio, this._webviewFactory);
 
   @override
-  Future<String> auth(String username, String password) async {
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final completer = Completer<String>();
     final webview = await _webviewFactory();
 
@@ -90,6 +94,7 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         URLRequest(
           url: WebUri('https://portalpersonas.bancochile.cl/persona/'),
         ),
+        timeout: timeout,
       );
 
       final rutSelector = '#ppriv_per-login-click-input-rut';
@@ -97,14 +102,14 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
 
       await webview.waitForSelector(
         rutSelector,
-        timeout: Duration(seconds: 30),
+        timeout: timeout,
         visible: true,
       );
 
       log("BancoChileService auth selector $rutSelector found");
 
-      await webview.type(rutSelector, username);
-      await webview.type(passwordSelector, password);
+      await webview.type(rutSelector, username, timeout: timeout);
+      await webview.type(passwordSelector, password, timeout: timeout);
 
       // Listen for success URL or error selector
       final successCompleter = Completer<bool>();
@@ -120,14 +125,17 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
 
       // Check for error selector will be done after click
 
-      await webview.click('#ppriv_per-login-click-ingresar-login');
+      await webview.click(
+        '#ppriv_per-login-click-ingresar-login',
+        timeout: timeout,
+      );
 
       log("BancoChileService auth waiting for success...");
 
       // Wait for success with timeout
       try {
         await successCompleter.future.timeout(
-          Duration(seconds: 60),
+          Duration(seconds: timeout.inSeconds * 3),
           onTimeout: () async {
             // Check manually for error before timing out
             try {

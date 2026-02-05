@@ -16,7 +16,11 @@ class ClBancoFalabellaPersonasConnectionService extends ConnectionService {
   ClBancoFalabellaPersonasConnectionService(this._dio, this._webviewFactory);
 
   @override
-  Future<String> auth(String username, String password) async {
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final webview = await _webviewFactory();
 
     try {
