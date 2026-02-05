@@ -36,7 +36,7 @@ class _ConnectionInstitutionLoginViewState
     final isLoading = connectionNotifier.value.isLoading;
     final institution = connectionNotifier.value.selectedInstitution;
     final institutionName = institution?.name;
-    final clientName = connectionNotifier.value.linkIntent.clientName;
+    final clientName = connectionNotifier.value.linkIntent!.clientName;
 
     return CustomScrollView(
       slivers: [

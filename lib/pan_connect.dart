@@ -12,26 +12,13 @@ import 'package:pan_scrapper/models/link_intent_model.dart';
 import 'package:pan_scrapper/models/local_connection_model.dart';
 import 'package:pan_scrapper/pan_connect_exception.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
-import 'package:pan_scrapper/presentation/screens/connection_screen.dart';
+import 'package:pan_scrapper/presentation/screens/connection_screen.dart'
+    show ConnectionFlowScreen, ConnectionInitialData;
 import 'package:pan_scrapper/services/api/api_service.dart';
 import 'package:pan_scrapper/services/storage/storage_service.dart';
 
 class PanConnect {
   PanConnect();
-
-  /// Shows a loading overlay with circular progress indicator
-  static void _showLoadingOverlay(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  /// Hides the loading overlay
-  static void _hideLoadingOverlay(BuildContext context) {
-    Navigator.of(context, rootNavigator: true).pop();
-  }
 
   static Future<void> launch(
     BuildContext context,
@@ -44,9 +31,7 @@ class PanConnect {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
 
-    try {
-      _showLoadingOverlay(context);
-
+    final initialDataFuture = Future<ConnectionInitialData>(() async {
       final results = await Future.wait([
         apiService.fetchInstitutions(publicKey: publicKey),
         apiService.fetchLinkIntent(
@@ -54,83 +39,77 @@ class PanConnect {
           publicKey: publicKey,
         ),
       ]);
-
-      if (context.mounted) {
-        _hideLoadingOverlay(context);
-      }
-
       final institutionsModel = results[0] as List<InstitutionModel>;
       final linkIntentModel = results[1] as LinkIntentResponseModel;
+      return (
+        institutions: institutionsModel.map((e) => e.toEntity()).toList(),
+        linkIntent: linkIntentModel.data.toEntity(),
+      );
+    });
 
-      final institutions = institutionsModel.map((e) => e.toEntity()).toList();
-      final linkIntent = linkIntentModel.data.toEntity();
+    if (context.mounted) {
+      await Navigator.push(
+        context,
+        PageRouteBuilder(
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0.0, 1.0);
+                const end = Offset.zero;
+                const curve = Curves.easeIn;
 
-      if (context.mounted) {
-        await Navigator.push(
-          context,
-          PageRouteBuilder(
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeIn;
+                var tween = Tween(
+                  begin: begin,
+                  end: end,
+                ).chain(CurveTween(curve: curve));
+                final offsetAnimation = animation.drive(tween);
 
-                  var tween = Tween(
-                    begin: begin,
-                    end: end,
-                  ).chain(CurveTween(curve: curve));
-                  final offsetAnimation = animation.drive(tween);
-
-                  return SlideTransition(
-                    position: offsetAnimation,
-                    child: child,
+                return SlideTransition(
+                  position: offsetAnimation,
+                  child: child,
+                );
+              },
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              ConnectionFlowScreen(
+                initialDataFuture: initialDataFuture,
+                headless: headless,
+                onSuccess: (connection, password) async {
+                  await _saveConnection(
+                    connection: connection,
+                    password: password,
+                    linkWidgetToken: linkWidgetToken,
+                    publicKey: publicKey,
+                    onSuccess: onSuccess,
                   );
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
                 },
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                ConnectionFlowScreen(
-                  institutions: institutions,
-                  linkIntent: linkIntent,
-                  headless: headless,
-                  onSuccess: (connection, password) async {
-                    await _saveConnection(
-                      connection: connection,
-                      password: password,
-                      linkWidgetToken: linkWidgetToken,
-                      publicKey: publicKey,
-                      onSuccess: onSuccess,
+                onError: (message) {
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Error'),
+                        content: Text(
+                          'Failed to fetch institutions: $message',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
                     );
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _hideLoadingOverlay(context);
-      }
-
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text('Failed to fetch institutions: ${e.toString()}'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+                  }
+                },
               ),
-            ],
-          ),
-        );
-      }
-      rethrow;
-    } finally {
-      dio.close();
+        ),
+      );
     }
+
+    dio.close();
   }
 
   static Future<void> _saveConnection({

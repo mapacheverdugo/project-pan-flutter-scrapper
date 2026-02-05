@@ -6,6 +6,7 @@ import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
 import 'package:example/widget/transaction_list_item.dart';
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 import 'package:open_file/open_file.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/extraction.dart';
@@ -224,7 +225,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     ? Container(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(),
+                        child: const LoadingIndicator(size: 20),
                       )
                     : Text('Fetch'),
               ),
@@ -240,7 +241,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                   ? SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: const LoadingIndicator(size: 16),
                     )
                   : Icon(Icons.picture_as_pdf),
               label: Text('Open PDF'),
@@ -311,7 +312,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                     ? Container(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(),
+                        child: const LoadingIndicator(size: 20),
                       )
                     : Text('Fetch'),
               ),
@@ -331,7 +332,7 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
                   ? SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: const LoadingIndicator(size: 16),
                     )
                   : Icon(Icons.picture_as_pdf),
               label: Text('Open PDF'),

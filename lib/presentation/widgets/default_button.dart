@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 
 enum DefaultButtonSize { sm, md, lg }
 
@@ -49,10 +50,14 @@ class DefaultButton extends StatelessWidget {
         child: Padding(
           padding: _padding,
           child: isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(),
+                  child: LoadingIndicator(
+                    size: 20,
+                    color: foregroundColor ??
+                        Theme.of(context).colorScheme.onPrimary,
+                  ),
                 )
               : Text(text.toUpperCase()),
         ),

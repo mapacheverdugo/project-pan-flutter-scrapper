@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/pan_connect.dart';
 
@@ -47,7 +48,7 @@ class _LocalConnectionsState extends State<LocalConnections> {
                 .toList(),
           );
         }
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: LoadingIndicator(size: 40));
       },
     );
   }

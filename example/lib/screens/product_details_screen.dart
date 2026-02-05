@@ -1,6 +1,7 @@
 import 'package:example/widget/period_card.dart';
 import 'package:example/widget/transaction_list_item.dart';
 import 'package:flutter/material.dart';
+import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 
@@ -64,7 +65,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ? Container(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(),
+                            child: const LoadingIndicator(size: 20),
                           )
                         : Text('Fetch'),
                   ),
@@ -103,7 +104,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ? Container(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(),
+                            child: const LoadingIndicator(size: 20),
                           )
                         : Text('Fetch'),
                   ),

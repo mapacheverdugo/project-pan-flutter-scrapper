@@ -49,9 +49,15 @@ class ConnectionStepLayout extends StatelessWidget {
   }
 }
 
+/// Result of loading initial connection data (institutions + link intent).
+typedef ConnectionInitialData = ({List<Institution> institutions, LinkIntent linkIntent});
+
 class ConnectionFlowScreen extends StatefulWidget {
-  final LinkIntent linkIntent;
-  final List<Institution> institutions;
+  final LinkIntent? linkIntent;
+  final List<Institution>? institutions;
+  /// When set, initial data is loaded asynchronously and the welcome view
+  /// shows a loading state until this future completes.
+  final Future<ConnectionInitialData>? initialDataFuture;
   final Function(
     ExtractedConnectionResultModel connectionResult,
     String password,
@@ -62,12 +68,16 @@ class ConnectionFlowScreen extends StatefulWidget {
 
   const ConnectionFlowScreen({
     super.key,
-    required this.linkIntent,
-    required this.institutions,
+    this.linkIntent,
+    this.institutions,
+    this.initialDataFuture,
     this.onSuccess,
     this.onError,
     this.headless = true,
-  });
+  }) : assert(
+         (linkIntent != null && institutions != null) || initialDataFuture != null,
+         'Provide either (linkIntent + institutions) or initialDataFuture',
+       );
 
   @override
   State<ConnectionFlowScreen> createState() => _ConnectionFlowScreenState();
@@ -79,13 +89,32 @@ class _ConnectionFlowScreenState extends State<ConnectionFlowScreen> {
   @override
   void initState() {
     super.initState();
-    _connectionNotifier = ConnectionNotifier(
-      ConnectionState(
-        institutions: widget.institutions,
-        linkIntent: widget.linkIntent,
-        selectedInstitutionCode: widget.linkIntent.preselectedInstitutionCode,
-      ),
-    );
+    if (widget.initialDataFuture != null) {
+      _connectionNotifier = ConnectionNotifier(
+        const ConnectionState(
+          institutions: [],
+          linkIntent: null,
+          isInitialLoading: true,
+        ),
+      );
+      widget.initialDataFuture!.then((data) {
+        if (mounted) {
+          _connectionNotifier.setInitialData(data.institutions, data.linkIntent);
+        }
+      }).catchError((Object e, StackTrace _) {
+        if (mounted) {
+          widget.onError?.call(e.toString());
+        }
+      });
+    } else {
+      _connectionNotifier = ConnectionNotifier(
+        ConnectionState(
+          institutions: widget.institutions!,
+          linkIntent: widget.linkIntent!,
+          selectedInstitutionCode: widget.linkIntent!.preselectedInstitutionCode,
+        ),
+      );
+    }
   }
 
   @override

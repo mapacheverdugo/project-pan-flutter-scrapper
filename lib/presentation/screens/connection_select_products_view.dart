@@ -31,7 +31,7 @@ class _ConnectionSelectProductsViewState
         final selectedProductIds = connectionNotifier.value.selectedProductIds;
         final institution = connectionNotifier.value.selectedInstitution;
         final institutionName = institution?.name;
-        final clientName = connectionNotifier.value.linkIntent.clientName;
+        final clientName = connectionNotifier.value.linkIntent!.clientName;
         final isLoading = connectionNotifier.value.isLoading;
 
         return CustomScrollView(

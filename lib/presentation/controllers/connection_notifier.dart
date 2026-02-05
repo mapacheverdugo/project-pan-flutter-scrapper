@@ -8,8 +8,10 @@ import 'package:pan_scrapper/models/connection/product.dart';
 /// Immutable model representing the connection state
 class ConnectionState {
   final bool isLoading;
+  /// True while initial data (institutions + linkIntent) is being fetched.
+  final bool isInitialLoading;
   final List<Institution> institutions;
-  final LinkIntent linkIntent;
+  final LinkIntent? linkIntent;
   final List<ExtractedProductModel> products;
   final InstitutionCode? selectedInstitutionCode;
   final List<String> selectedProductIds;
@@ -29,6 +31,7 @@ class ConnectionState {
     required this.linkIntent,
     this.selectedInstitutionCode,
     this.isLoading = false,
+    this.isInitialLoading = false,
     this.products = const [],
     this.selectedProductIds = const [],
     this.username,
@@ -37,6 +40,7 @@ class ConnectionState {
 
   ConnectionState copyWith({
     bool? isLoading,
+    bool? isInitialLoading,
     List<ExtractedProductModel>? products,
     List<Institution>? institutions,
     InstitutionCode? selectedInstitutionCode,
@@ -47,6 +51,7 @@ class ConnectionState {
   }) {
     return ConnectionState(
       isLoading: isLoading ?? this.isLoading,
+      isInitialLoading: isInitialLoading ?? this.isInitialLoading,
       products: products ?? this.products,
       institutions: institutions ?? this.institutions,
       selectedInstitutionCode:
@@ -63,6 +68,7 @@ class ConnectionState {
     if (identical(this, other)) return true;
     return other is ConnectionState &&
         other.isLoading == isLoading &&
+        other.isInitialLoading == isInitialLoading &&
         other.products == products &&
         other.institutions == institutions &&
         other.selectedInstitutionCode == selectedInstitutionCode &&
@@ -75,6 +81,7 @@ class ConnectionState {
   @override
   int get hashCode => Object.hash(
     isLoading,
+    isInitialLoading,
     products,
     institutions,
     selectedInstitutionCode,
@@ -135,6 +142,17 @@ class ConnectionNotifier extends ValueNotifier<ConnectionState> {
   /// Sets the password
   void setPassword(String password) {
     value = value.copyWith(password: password);
+  }
+
+  /// Sets initial data after async load (institutions + linkIntent).
+  /// Clears [isInitialLoading].
+  void setInitialData(List<Institution> institutions, LinkIntent linkIntent) {
+    value = value.copyWith(
+      institutions: institutions,
+      linkIntent: linkIntent,
+      isInitialLoading: false,
+      selectedInstitutionCode: linkIntent.preselectedInstitutionCode,
+    );
   }
 
   /// Clears the state (resets to initial state)
