@@ -126,16 +126,27 @@ class PanScrapperService {
     return client.getProducts(credentials);
   }
 
-  Future<String> auth(String username, String password) async {
-    final credentials = await _client.auth(username, password);
+  Future<String> auth(
+    String username,
+    String password, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final credentials = await _client.auth(
+      username,
+      password,
+      timeout: timeout,
+    );
     await _storage.saveConnectionCredentials(connection.id, credentials);
     return credentials;
   }
 
-  Future<String> reAuth() async {
+  Future<String> reAuth({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final credentials = await _client.auth(
       connection.rawUsername,
       connection.password,
+      timeout: timeout,
     );
 
     await _storage.saveConnectionCredentials(connection.id, credentials);

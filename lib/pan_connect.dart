@@ -254,6 +254,7 @@ class PanConnect {
     List<String> syncTokens,
     String publicKey, {
     bool ignoreMinimumSyncInterval = false,
+    Duration timeout = const Duration(seconds: 30),
     void Function(String syncToken)? onStart,
     void Function(String syncToken, Object? error)? onError,
     void Function(String syncToken)? onSuccess,
@@ -293,7 +294,7 @@ class PanConnect {
 
         try {
           onStart?.call(syncToken);
-          await panScrapperService.reAuth();
+          await panScrapperService.reAuth(timeout: timeout);
         } catch (e) {
           onError?.call(syncToken, e);
           continue;
