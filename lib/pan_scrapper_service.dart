@@ -9,6 +9,7 @@ import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
 import 'package:pan_scrapper/services/storage/storage_service.dart';
+import 'package:pan_scrapper/utils/logger.dart';
 
 import 'services/index.dart';
 
@@ -219,22 +220,22 @@ class PanScrapperService {
     } on ConnectionException catch (e) {
       if (e.type == ConnectionExceptionType.invalidAuthCredentials ||
           e.type == ConnectionExceptionType.authCredentialsExpired) {
-        log(
+        talker.info(
           'authenticatedWrapper ConnectionExceptionType.invalidAuthCredentials, re-authenticating',
         );
         final newCredentials = await auth(
           connection.rawUsername,
           connection.password,
         );
-        log(
+        talker.info(
           'authenticatedWrapper New credentials after ConnectionExceptionType.invalidAuthCredentials: $newCredentials',
         );
         return authenticatedWrapper(connectionId, function);
       }
-      log('authenticatedWrapper ConnectionException: $e');
+      talker.info('authenticatedWrapper ConnectionException: $e');
       rethrow;
     } catch (e) {
-      log('authenticatedWrapper Error: $e');
+      talker.info('authenticatedWrapper Error: $e');
       rethrow;
     }
   }

@@ -1,20 +1,23 @@
 import 'dart:async';
-import 'dart:developer';
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart'
     hide CookieManager;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
+import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/product_mapper.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
+import 'package:pan_scrapper/utils/logger.dart';
 
 class ClItauPersonasConnectionService extends ConnectionService {
   late final Dio _dio;
@@ -32,7 +35,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     final webview = await _webviewFactory();
 
     try {
-      log("ItauService auth - opening login page");
+      talker.info("ItauService auth - opening login page");
 
       webview.addShouldOverrideUrlLoadingListener(
         RegExp(r'https://banco.itau.cl/wps/myportal/newolb/web/home/newhome.*'),
@@ -51,7 +54,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
         ),
       );
 
-      log("ItauService auth after navigate");
+      talker.info("ItauService auth after navigate");
 
       final rutSelector = '#loginNameID';
       final passwordSelector = '#pswdId';
@@ -68,7 +71,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
       await webview.tap(submitButtonSelector);
 
-      log("ItauService auth submit clicked, waiting...");
+      talker.info("ItauService auth submit clicked, waiting...");
 
       await completer.future.timeout(
         Duration(seconds: 60),
@@ -87,12 +90,12 @@ class ClItauPersonasConnectionService extends ConnectionService {
           .map((e) => '${e.name}=${e.value}')
           .join('; ');
 
-      log("ItauService auth completed - cookies extracted");
+      talker.info("ItauService auth completed - cookies extracted");
 
       return cookieString;
     } catch (e) {
       await webview.close();
-      log('Itau auth error: $e');
+      talker.error('Itau auth error: $e');
       rethrow;
     }
   }
@@ -104,50 +107,65 @@ class ClItauPersonasConnectionService extends ConnectionService {
     return [...depositaryAccounts, ...creditCards];
   }
 
-  Future<List<ExtractedProductModel>> _getDepositaryAccounts(
+  Future<List<_DepositaryAccountData>> _getDepositaryAccountsData(
     String credentials,
   ) async {
-    try {
-      final homeResp = await _dio.get(
-        'https://banco.itau.cl/wps/myportal/newolb/web/home/newhome',
-        options: Options(headers: {'Cookie': credentials}),
+    final accounts = <_DepositaryAccountData>[];
+
+    final homeResp = await _dio.get(
+      'https://banco.itau.cl/wps/myportal/newolb/web/home/newhome',
+      options: Options(
+        headers: {'Cookie': credentials},
+        followRedirects: true,
+        maxRedirects: 10,
+      ),
+    );
+
+    await _checkDioResponse(homeResp);
+
+    final homeHtml = homeResp.data.toString();
+
+    final homeRespUrl = homeResp.realUri;
+
+    final homeDoc = parse(homeHtml);
+
+    final cuentaIds = homeDoc
+        .querySelectorAll('select#comboCuentas option[value]')
+        .map((o) => (o.attributes['value'] ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toList();
+
+    if (cuentaIds.isEmpty) return accounts;
+
+    final linkElement = homeDoc.querySelector(
+      'a[href*="_gen_call_onChangeCuenta"]',
+    );
+
+    final href = linkElement?.attributes['href']?.trim();
+    if (href == null) {
+      talker.error(
+        'Itau: no se encontró el link para cambiar cuenta (comboCuentas).',
       );
+      return accounts;
+    }
 
-      final products = <ExtractedProductModel>[];
-
-      final homeHtml = homeResp.data.toString();
-      final homeRespUrl = homeResp.realUri;
-      final baseUrl = 'https://${homeRespUrl.host}';
-      final homeDoc = parse(homeHtml);
-
-      final cuentaIds = homeDoc
-          .querySelectorAll('select#comboCuentas option[value]')
-          .map((o) => (o.attributes['value'] ?? '').trim())
-          .where((v) => v.isNotEmpty)
-          .toList();
-
-      if (cuentaIds.isEmpty) return products;
-
-      final linkElement = homeDoc.querySelector(
-        'a[href*="_gen_call_onChangeCuenta"]',
+    final form = homeDoc.querySelector('#filterCtaSaldo');
+    if (form == null) {
+      talker.error(
+        'Itau: no se encontró el form para cambiar cuenta (comboCuentas).',
       );
+      return accounts;
+    }
 
-      final href = linkElement?.attributes['href']?.trim();
-      if (href == null) {
-        log('Itau: no se encontró el link para cambiar cuenta (comboCuentas).');
-        return products;
-      }
+    final baseUrl = 'https://${homeRespUrl.host}';
 
-      final actionUrl = '$baseUrl$href';
+    final navStateUrl = homeDoc
+        .getElementById('com.ibm.lotus.NavStateUrl')
+        ?.attributes['href'];
 
-      final form = homeDoc.querySelector('#filterCtaSaldo');
-      if (form == null) {
-        log('Itau: no se encontró el form para cambiar cuenta (comboCuentas).');
-        return products;
-      }
+    final actionUrl = '$baseUrl$href';
 
-      // 3) Base payload: todos los inputs del form (hidden + text + etc.)
-      // Luego sobreescribimos comboCuentas en cada iteración.
+    for (final cuentaId in cuentaIds) {
       final basePayload = _extractFormFieldsFromElement(form);
 
       final commonHeaders = <String, String>{
@@ -158,35 +176,54 @@ class ClItauPersonasConnectionService extends ConnectionService {
         'Referer': 'https://banco.itau.cl/wps/myportal/newolb/web/home/newhome',
       };
 
-      for (final cuentaId in cuentaIds) {
-        final payload = Map<String, dynamic>.from(basePayload);
-        payload['comboCuentas'] = cuentaId;
+      final payload = Map<String, dynamic>.from(basePayload);
+      payload['comboCuentas'] = cuentaId;
 
-        final resp = await _dio.post(
-          actionUrl,
-          data: payload,
-          options: Options(
-            headers: commonHeaders,
-            contentType: Headers.formUrlEncodedContentType,
-            responseType: ResponseType.plain,
-          ),
-        );
+      final resp = await _dio.post(
+        actionUrl,
+        data: payload,
+        options: Options(
+          headers: commonHeaders,
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
 
-        final fragmentHtml = resp.data.toString();
+      await _checkDioResponse(resp);
 
-        final parsed =
+      final html = resp.data.toString();
+
+      accounts.add(
+        _DepositaryAccountData(id: cuentaId, url: navStateUrl, html: html),
+      );
+    }
+    return accounts;
+  }
+
+  Future<List<ExtractedProductModel>> _getDepositaryAccounts(
+    String credentials,
+  ) async {
+    try {
+      final products = <ExtractedProductModel>[];
+
+      final accounts = await _getDepositaryAccountsData(credentials);
+
+      for (final account in accounts) {
+        final parsedProducts =
             ClItauPersonasProductMapper.parseDepositaryProductFromResponse(
-              cuentaId: cuentaId,
-              fragmentHtml: fragmentHtml,
-              homeHtml: homeHtml,
+              cuentaId: account.id,
+              fragmentHtml: account.html,
             );
 
-        if (parsed != null) products.add(parsed);
+        products.addAll(parsedProducts);
       }
 
       return products;
     } catch (e) {
-      log('Itau get depositary accounts error: $e');
+      if (e is DioException) {
+        await _checkDioException(e);
+      }
+      talker.error('Itau get depositary accounts error: $e');
       rethrow;
     }
   }
@@ -233,10 +270,16 @@ class ClItauPersonasConnectionService extends ConnectionService {
         options: Options(headers: {'Cookie': credentials}),
       );
       final html = response.data.toString();
+
+      await _checkDioResponse(response);
+
       final products = ClItauPersonasCreditCardMapper.parseCreditCard(html);
       return products;
     } catch (e) {
-      log('Itau get products error: $e');
+      talker.error('Itau get products error: $e');
+      if (e is DioException) {
+        await _checkDioException(e);
+      }
       rethrow;
     }
   }
@@ -246,9 +289,136 @@ class ClItauPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
   ) async {
-    throw UnimplementedError(
-      'Itau depositary account transactions not implemented',
-    );
+    try {
+      final productCodeById = productId.split('_')[0];
+
+      final transactions = <ExtractedTransaction>[];
+
+      final initialUrl = switch (productCodeById) {
+        'CA' =>
+          'https://banco.itau.cl/wps/myportal/newolb/web/cuentas/cuenta-corriente/cartola-historica',
+        'CU' =>
+          'https://banco.itau.cl/wps/myportal/newolb/web/cuentas/cuenta-en-dolares/cartola-historica',
+        'LC|CA' =>
+          'https://banco.itau.cl/wps/myportal/newolb/web/cuentas/linea-credito/cartola-historica',
+        _ => null,
+      };
+
+      if (initialUrl == null) {
+        throw Exception(
+          'Itau: no se encontró la URL inicial para $productCodeById',
+        );
+      }
+
+      final initialResponse = await _dio.get(
+        initialUrl,
+        options: Options(headers: {'Cookie': credentials}),
+      );
+      final initialHtml = initialResponse.data.toString();
+      final initialDoc = parse(initialHtml);
+
+      transactions.addAll(
+        ClItauPersonasDepositaryTransactionMapper.fromCartolaHtml(initialHtml),
+      );
+
+      final loadedMonthYear = initialDoc
+          .querySelector('#resultShow')
+          ?.attributes['value']
+          ?.trim();
+
+      if (loadedMonthYear == null) {
+        throw Exception('Itau: no se encontró el mes y año cargados');
+      }
+
+      final baseHref = initialDoc
+          .getElementsByTagName('base')[0]
+          .attributes['href']
+          ?.trim();
+      if (baseHref == null) {
+        throw Exception('Itau: no se encontró el base href');
+      }
+
+      final uri = initialDoc
+          .querySelector('#formularioSelect a')
+          ?.attributes['href']
+          ?.trim();
+      if (uri == null) {
+        throw Exception('Itau: no se encontró el link para seleccionar el mes');
+      }
+
+      final currentMonth = DateTime.now().month;
+      final currentMonthParsed = currentMonth.toString().padLeft(2, '0');
+      final currentYear = DateTime.now().year;
+      final currentYearParsed = currentYear;
+
+      final previousMonth = currentMonth == 1 ? 12 : currentMonth - 1;
+      final previousMonthParsed = previousMonth.toString().padLeft(2, '0');
+      final previousMonthYearParsed = currentMonth == 1
+          ? currentYear - 1
+          : currentYear;
+
+      final isCurrentMonth =
+          loadedMonthYear == '$currentMonthParsed / $currentYearParsed';
+      final isPreviousMonth =
+          loadedMonthYear == '$previousMonthParsed / $previousMonthYearParsed';
+
+      if (!isCurrentMonth && !isPreviousMonth) {
+        throw Exception('Itau: no se encontró el mes y año cargados');
+      }
+
+      final arg = 'CM';
+      final bowStEvent =
+          'portlets/cuentas/cartolas/CartolaHistoricaPortlet!fireEvent:Form:ip_cartolaHistorica_SaveDataSubmitEvent';
+
+      final currentMonthData = {
+        'al_cartolaHistorica_Arg1': arg,
+        '_bowStEvent': bowStEvent,
+        'resultShow': '$currentMonthParsed / $currentYearParsed',
+        'fecha': '$currentMonthParsed $currentYearParsed',
+        'Mes': currentMonthParsed,
+        'Anio': currentYearParsed.toString(),
+      };
+
+      final previousMonthData = {
+        'al_cartolaHistorica_Arg1': arg,
+        '_bowStEvent': bowStEvent,
+        'resultShow': '$previousMonthParsed / $previousMonthYearParsed',
+        'fecha': '$previousMonthParsed $previousMonthYearParsed',
+        'Mes': previousMonthParsed,
+        'Anio': previousMonthYearParsed.toString(),
+      };
+
+      final data = isCurrentMonth ? previousMonthData : currentMonthData;
+
+      final otherMonthUrl = '$baseHref$uri';
+
+      final otherMonthResponse = await _dio.post(
+        otherMonthUrl,
+        data: data,
+        options: Options(
+          headers: {'Cookie': credentials, 'Referrer': initialUrl},
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      await _checkDioResponse(otherMonthResponse);
+
+      final otherMonthHtml = otherMonthResponse.data.toString();
+
+      transactions.addAll(
+        ClItauPersonasDepositaryTransactionMapper.fromCartolaHtml(
+          otherMonthHtml,
+        ),
+      );
+
+      return transactions;
+    } catch (e) {
+      if (e is DioException) {
+        await _checkDioException(e);
+      }
+      talker.error('Itau get depositary account transactions error: $e');
+      rethrow;
+    }
   }
 
   @override
@@ -284,7 +454,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
       return [...nacionalPeriods, ...internacionalPeriods];
     } catch (e) {
-      log('Itau get credit card bill periods error: $e');
+      talker.error('Itau get credit card bill periods error: $e');
       rethrow;
     }
   }
@@ -306,11 +476,15 @@ class ClItauPersonasConnectionService extends ConnectionService {
       options: Options(headers: commonHeaders),
     );
 
+    await _checkDioResponse(initialResponse);
+
     final contentLocationUrlPath = initialResponse.headers.value(
       'content-location',
     );
     if (contentLocationUrlPath == null) {
-      log('Itau: no se encontró el content-location para $currencyType');
+      talker.error(
+        'Itau: no se encontró el content-location para $currencyType',
+      );
       return periods;
     }
 
@@ -324,7 +498,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     );
     final selectFormActionUrlPath = selectFormAElement?.attributes['href'];
     if (selectFormActionUrlPath == null) {
-      log(
+      talker.error(
         'Itau: no se encontró el link para seleccionar la cuenta para $currencyType',
       );
       return periods;
@@ -342,6 +516,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
         responseType: ResponseType.plain,
       ),
     );
+    await _checkDioResponse(selectedResponse);
     final selectedResponseUri = selectedResponse.realUri;
 
     final selectedHtml = selectedResponse.data.toString();
@@ -352,19 +527,21 @@ class ClItauPersonasConnectionService extends ConnectionService {
     // Extract the initial period from resultShow input
     final periodoInput = selectedDoc.querySelector('#periodo option');
     if (periodoInput == null) {
-      log('Itau: no se encontró el input periodo para $currencyType');
+      talker.error('Itau: no se encontró el input periodo para $currencyType');
       return periods;
     }
 
     final initialPeriodValue = (periodoInput.attributes['value'] ?? '').trim();
     if (initialPeriodValue.isEmpty) {
-      log('Itau: resultShow está vacío para $currencyType');
+      talker.error('Itau: resultShow está vacío para $currencyType');
       return periods;
     }
 
     final initialPeriod = _parsePeriod(initialPeriodValue);
     if (initialPeriod == null) {
-      log('Itau: no se pudo parsear el periodo inicial: $initialPeriodValue');
+      talker.error(
+        'Itau: no se pudo parsear el periodo inicial: $initialPeriodValue',
+      );
       return periods;
     }
 
@@ -382,7 +559,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
     );
     final bowStEventValue = bowStEventInput?.attributes['value']?.trim();
     if (bowStEventValue == null) {
-      log('Itau: no se encontró el value para _bowStEvent');
+      talker.error('Itau: no se encontró el value para _bowStEvent');
       return periods;
     }
 
@@ -416,14 +593,16 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
         final periodoInput = doc.querySelector('#periodo option');
         if (periodoInput == null) {
-          log('Itau: no se encontró el input periodo para $currencyType');
+          talker.error(
+            'Itau: no se encontró el input periodo para $currencyType',
+          );
           return periods;
         }
 
         final initialPeriodValue = (periodoInput.attributes['value'] ?? '')
             .trim();
         if (initialPeriodValue.isEmpty) {
-          log('Itau: resultShow está vacío para $currencyType');
+          talker.error('Itau: resultShow está vacío para $currencyType');
           return periods;
         }
 
@@ -440,7 +619,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
           periods.add(period);
         }
       } catch (e) {
-        log('Itau: error requesting period data: $e');
+        talker.error('Itau: error requesting period data: $e');
         emptyPeriodsCounter++;
       }
     }
@@ -481,7 +660,7 @@ class ClItauPersonasConnectionService extends ConnectionService {
           '${requestedPeriod.year}${requestedPeriod.month.toString().padLeft(2, '0')}',
     };
 
-    return _dio.post(
+    final response = await _dio.post(
       url,
       data: data,
       options: Options(
@@ -490,6 +669,8 @@ class ClItauPersonasConnectionService extends ConnectionService {
         responseType: ResponseType.plain,
       ),
     );
+    await _checkDioResponse(response);
+    return response;
   }
 
   _Period? _parsePeriod(String periodStr) {
@@ -561,6 +742,28 @@ class ClItauPersonasConnectionService extends ConnectionService {
   }
 }
 
+Future<void> _checkDioResponse(Response<dynamic> response) async {
+  final html = response.data.toString();
+
+  final doc = parse(html);
+  final errorMessage = doc.querySelector('form[name="exceptionForm"]');
+  if (errorMessage != null) {
+    throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+  }
+}
+
+Future<void> _checkDioException(DioException exception) async {
+  talker.debug('Error fetching Itau: ${exception.response?.statusCode}');
+  if (exception.response?.statusCode != null &&
+      exception.response!.statusCode! == 400) {
+    throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+  }
+  if (exception.response == null && exception.error is RedirectException) {
+    throw ConnectionException(ConnectionExceptionType.authCredentialsExpired);
+  }
+  talker.error('Error fetching Itau: $exception');
+}
+
 class _Period {
   final int month;
   final int year;
@@ -575,4 +778,16 @@ class _Period {
   }
 
   _Period({required this.month, required this.year, this.day});
+}
+
+class _DepositaryAccountData {
+  final String id;
+  final String? url;
+  final String html;
+
+  _DepositaryAccountData({
+    required this.id,
+    required this.url,
+    required this.html,
+  });
 }
