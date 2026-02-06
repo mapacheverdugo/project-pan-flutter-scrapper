@@ -14,6 +14,8 @@ import 'package:pan_scrapper/entities/currency.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_bill_internacional_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_bill_nacional_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_unbilled_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/depositary_transaction_mapper.dart';
@@ -799,7 +801,155 @@ class ClItauPersonasConnectionService extends ConnectionService {
     String productId,
     String periodId,
   ) async {
-    throw UnimplementedError('Itau credit card bill not implemented');
+    final parts = periodId.split('|');
+    if (parts.length < 3) {
+      throw ArgumentError('Invalid periodId format: $periodId');
+    }
+    final currencyTypeStr = parts[2];
+    final isNational = currencyTypeStr == CurrencyType.national.name;
+    final isInternational = currencyTypeStr == CurrencyType.international.name;
+    if (!isNational && !isInternational) {
+      throw ArgumentError(
+        'Itau credit card bill expects periodId with currencyType national or international',
+      );
+    }
+
+    final startDate = parts[1]; // YYYY-MM-DD
+    final dateParts = startDate.split('-');
+    if (dateParts.length != 3) {
+      throw ArgumentError('Invalid startDate in periodId: $startDate');
+    }
+    final year = int.tryParse(dateParts[0]);
+    final month = int.tryParse(dateParts[1]);
+    final day = int.tryParse(dateParts[2]);
+    if (year == null || month == null || day == null) {
+      throw ArgumentError('Invalid startDate in periodId: $startDate');
+    }
+    final period = _Period(month: month, year: year, day: day);
+
+    final commonHeaders = <String, String>{
+      'Cookie': credentials,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Referer':
+          'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/deuda',
+      'Origin': 'https://banco.itau.cl',
+    };
+
+    final cookieJar = CookieJar();
+    _dio.interceptors.add(CookieManager(cookieJar));
+
+    final cuentaPath =
+        isNational ? 'cuenta-nacional' : 'cuenta-internacional';
+    final initialResponse = await _dio.get(
+      'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/$cuentaPath',
+      options: Options(headers: commonHeaders),
+    );
+    await _checkDioResponse(initialResponse);
+
+    final initialHtml = initialResponse.data.toString();
+    final initialDoc = parse(initialHtml);
+
+    final contentLocationUrlPath = initialResponse.headers.value(
+      'content-location',
+    );
+    if (contentLocationUrlPath == null) {
+      throw Exception(
+        'Itau: no se encontró el content-location para $cuentaPath',
+      );
+    }
+
+    final initialResponseUri = initialResponse.realUri;
+    final selectAccountFormElement = initialDoc.querySelector(
+      'form[name="comboForm"] a',
+    );
+    final selectAccountFormActionUrlPath =
+        selectAccountFormElement?.attributes['href'];
+    if (selectAccountFormActionUrlPath == null) {
+      throw Exception(
+        'Itau: no se encontró el link para seleccionar la cuenta $cuentaPath',
+      );
+    }
+
+    final selectAccountBaseUrl = contentLocationUrlPath.split('/dz/d5').first;
+    final selectAccountFormUrl = initialResponseUri
+        .resolve('$selectAccountBaseUrl/$selectAccountFormActionUrlPath')
+        .toString();
+
+    final selectedResponse = await _dio.post(
+      selectAccountFormUrl,
+      data: {'cuentaIdSelected': productId},
+      options: Options(
+        headers: commonHeaders,
+        contentType: Headers.formUrlEncodedContentType,
+        responseType: ResponseType.plain,
+      ),
+    );
+    await _checkDioResponse(selectedResponse);
+    final selectedResponseUri = selectedResponse.realUri;
+    final selectedDoc = parse(selectedResponse.data.toString());
+
+    final bowStEventInput = initialDoc.querySelector(
+      '#formularioSelect input[name="_bowStEvent"]',
+    );
+    final bowStEventValue = bowStEventInput?.attributes['value']?.trim();
+    if (bowStEventValue == null) {
+      throw Exception('Itau: no se encontró el value para _bowStEvent');
+    }
+
+    final periodFormFormSelector = isNational
+        ? '#formularioSelect a[id^="wpf_action_ref_0portletstarjeta_creditoestadoEstadoDeudaNacionalPortlet_"]'
+        : '#formularioSelect a[id^="wpf_action_ref_0portletstarjeta_creditoestadoEstadoDeudaInternacionalPortlet_"]';
+    final periodFormFormAElement =
+        selectedDoc.querySelector(periodFormFormSelector);
+    final periodFormFormActionUrlPath =
+        periodFormFormAElement?.attributes['href'];
+    if (periodFormFormActionUrlPath == null) {
+      throw Exception(
+        'Itau: no se encontró el link del formulario de periodo $cuentaPath',
+      );
+    }
+
+    final formularioSelectFormUrl = selectedResponseUri
+        .resolve('$contentLocationUrlPath/$periodFormFormActionUrlPath')
+        .toString();
+
+    final response = await _requestPeriodData(
+      credentials,
+      formularioSelectFormUrl,
+      commonHeaders,
+      period,
+      period,
+      bowStEventValue,
+    );
+    final html = response.data.toString();
+
+    if (_isEmptyPeriod(html)) {
+      throw Exception('Itau: el periodo no tiene datos');
+    }
+
+    if (isNational) {
+      final result = ClItauPersonasCreditCardBillNacionalMapper
+          .fromEstadoCuentaNacionalHtml(html);
+      return ExtractedCreditCardBill(
+        periodProviderId: periodId,
+        currencyType: CurrencyType.national,
+        summary: result.summary,
+        transactions: result.transactions,
+        billDocumentBase64: null,
+      );
+    } else {
+      final result = ClItauPersonasCreditCardBillInternacionalMapper
+          .fromEstadoCuentaInternacionalHtml(html);
+      return ExtractedCreditCardBill(
+        periodProviderId: periodId,
+        currencyType: CurrencyType.international,
+        summary: result.summary,
+        transactions: result.transactions,
+        billDocumentBase64: null,
+      );
+    }
   }
 
   @override
