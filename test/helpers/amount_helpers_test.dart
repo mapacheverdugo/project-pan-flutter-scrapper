@@ -303,4 +303,22 @@ void main() {
       expect(amount?.value, 18390);
     },
   );
+
+  // USD$ 49,17 with invert sign to be equal to -4917
+  test(
+    r'tryParse amount in USD with text "USD$ 49,17" and invert sign to be equal to -4917',
+    () {
+      final amount = Amount.tryParse(
+        r'USD$ 49,17',
+        Currency.usd,
+        options: AmountParseOptions(
+          invertSign: true,
+          factor: 1,
+          thousandSeparator: '.',
+          decimalSeparator: ',',
+        ),
+      );
+      expect(amount?.value, -4917);
+    },
+  );
 }

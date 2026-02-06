@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart'
     hide CookieManager;
@@ -14,8 +15,10 @@ import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/services/connection/connection_exception.dart';
 import 'package:pan_scrapper/services/connection/connection_service.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/credit_card_unbilled_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/depositary_transaction_mapper.dart';
 import 'package:pan_scrapper/services/connection/mappers/cl_itau_personas/product_mapper.dart';
+import 'package:pan_scrapper/services/connection/mappers/common.dart';
 import 'package:pan_scrapper/services/connection/webview/webview.dart';
 import 'package:pan_scrapper/utils/logger.dart';
 
@@ -317,10 +320,6 @@ class ClItauPersonasConnectionService extends ConnectionService {
       final initialHtml = initialResponse.data.toString();
       final initialDoc = parse(initialHtml);
 
-      transactions.addAll(
-        ClItauPersonasDepositaryTransactionMapper.fromCartolaHtml(initialHtml),
-      );
-
       final loadedMonthYear = initialDoc
           .querySelector('#resultShow')
           ?.attributes['value']
@@ -337,6 +336,15 @@ class ClItauPersonasConnectionService extends ConnectionService {
       if (baseHref == null) {
         throw Exception('Itau: no se encontró el base href');
       }
+
+      final initialTransactions =
+          await _getDepositaryAccountTransactionsFromAllPages(
+            initialHtml,
+            baseHref,
+            credentials,
+          );
+
+      transactions.addAll(initialTransactions);
 
       final uri = initialDoc
           .querySelector('#formularioSelect a')
@@ -421,6 +429,62 @@ class ClItauPersonasConnectionService extends ConnectionService {
     }
   }
 
+  Future<List<ExtractedTransaction>>
+  _getDepositaryAccountTransactionsFromAllPages(
+    String html,
+    String initialUrl,
+    String credentials,
+  ) async {
+    final htmlDoc = parse(html);
+
+    final transactions = <ExtractedTransaction>[];
+    final firstPageTransactions =
+        ClItauPersonasDepositaryTransactionMapper.fromCartolaHtml(html);
+
+    transactions.addAll(firstPageTransactions);
+
+    if (firstPageTransactions.isNotEmpty) {
+      var nextRightOnElement = htmlDoc.querySelector(
+        'img[src*="next_right_on.png"]',
+      );
+      while (nextRightOnElement != null) {
+        final nextRightOnElementFather = nextRightOnElement.parent;
+        talker.info(
+          'Itau: next right on element father: $nextRightOnElementFather',
+        );
+
+        if (nextRightOnElementFather == null) {
+          nextRightOnElement = null;
+          break;
+        }
+
+        final uri = nextRightOnElementFather.attributes['href'];
+
+        final nextPageUrl = "$initialUrl$uri";
+
+        final nextPageResponse = await _dio.get(
+          nextPageUrl,
+          options: Options(headers: {'Cookie': credentials}),
+        );
+
+        final nextPageHtml = nextPageResponse.data.toString();
+        final nextPageDoc = parse(nextPageHtml);
+
+        final nextPageTransactions =
+            ClItauPersonasDepositaryTransactionMapper.fromCartolaHtml(
+              nextPageHtml,
+            );
+        transactions.addAll(nextPageTransactions);
+
+        nextRightOnElement = nextPageDoc.querySelector(
+          'img[src*="next_right_on.png"]',
+        );
+      }
+    }
+
+    return transactions;
+  }
+
   @override
   Future<List<ExtractedCreditCardBillPeriod>> getCreditCardBillPeriods(
     String credentials,
@@ -454,6 +518,9 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
       return [...nacionalPeriods, ...internacionalPeriods];
     } catch (e) {
+      if (e is DioException) {
+        await _checkDioException(e);
+      }
       talker.error('Itau get credit card bill periods error: $e');
       rethrow;
     }
@@ -478,6 +545,9 @@ class ClItauPersonasConnectionService extends ConnectionService {
 
     await _checkDioResponse(initialResponse);
 
+    final initialHtml = initialResponse.data.toString();
+    final initialDoc = parse(initialHtml);
+
     final contentLocationUrlPath = initialResponse.headers.value(
       'content-location',
     );
@@ -488,27 +558,31 @@ class ClItauPersonasConnectionService extends ConnectionService {
       return periods;
     }
 
-    final initialHtml = initialResponse.data.toString();
-    final initialDoc = parse(initialHtml);
+    //await copyHtmlToClipboard(initialHtml);
 
     final initialResponseUri = initialResponse.realUri;
 
-    final selectFormAElement = initialDoc.querySelector(
-      'form[name="comboForm"] a[id^="wpf_action_ref_"]',
+    final selectAccountFormSelector = 'form[name="comboForm"] a';
+    final selectAccountFormElement = initialDoc.querySelector(
+      selectAccountFormSelector,
     );
-    final selectFormActionUrlPath = selectFormAElement?.attributes['href'];
-    if (selectFormActionUrlPath == null) {
+    final selectAccountFormActionUrlPath =
+        selectAccountFormElement?.attributes['href'];
+    if (selectAccountFormActionUrlPath == null) {
       talker.error(
         'Itau: no se encontró el link para seleccionar la cuenta para $currencyType',
       );
       return periods;
     }
 
-    final selectFormUrl = initialResponseUri
-        .resolve('$contentLocationUrlPath/$selectFormActionUrlPath')
+    final selectAccountBaseUrl = contentLocationUrlPath.split('/dz/d5').first;
+
+    final selectAccountFormUrl = initialResponseUri
+        .resolve('$selectAccountBaseUrl/$selectAccountFormActionUrlPath')
         .toString();
+
     final selectedResponse = await _dio.post(
-      selectFormUrl,
+      selectAccountFormUrl,
       data: {'cuentaIdSelected': productId},
       options: Options(
         headers: commonHeaders,
@@ -525,7 +599,10 @@ class ClItauPersonasConnectionService extends ConnectionService {
     var emptyPeriodsCounter = 0;
 
     // Extract the initial period from resultShow input
-    final periodoInput = selectedDoc.querySelector('#periodo option');
+    final periodoInputSelector = currencyType == 'nacional'
+        ? '#periodo option'
+        : '#periodo option';
+    final periodoInput = selectedDoc.querySelector(periodoInputSelector);
     if (periodoInput == null) {
       talker.error('Itau: no se encontró el input periodo para $currencyType');
       return periods;
@@ -563,14 +640,18 @@ class ClItauPersonasConnectionService extends ConnectionService {
       return periods;
     }
 
-    final formularioSelectFormAElement = initialDoc.querySelector(
-      '#formularioSelect a[id^="wpf_action_ref_"]',
+    final periodFormFormSelector = currencyType == 'nacional'
+        ? '#formularioSelect a[id^="wpf_action_ref_0portletstarjeta_creditoestadoEstadoDeudaNacionalPortlet_"]'
+        : '#formularioSelect a[id^="wpf_action_ref_0portletstarjeta_creditoestadoEstadoDeudaInternacionalPortlet_"]';
+
+    final periodFormFormAElement = initialDoc.querySelector(
+      periodFormFormSelector,
     );
-    final formularioSelectFormActionUrlPath =
-        formularioSelectFormAElement?.attributes['href'];
+    final periodFormFormActionUrlPath =
+        periodFormFormAElement?.attributes['href'];
 
     final formularioSelectFormUrl = selectedResponseUri
-        .resolve('$contentLocationUrlPath/$formularioSelectFormActionUrlPath')
+        .resolve('$contentLocationUrlPath/$periodFormFormActionUrlPath')
         .toString();
 
     var currentPeriod = initialPeriod;
@@ -591,11 +672,11 @@ class ClItauPersonasConnectionService extends ConnectionService {
         final html = response.data.toString();
         final doc = parse(html);
 
-        final periodoInput = doc.querySelector('#periodo option');
+        final periodoInput = doc.querySelector(periodoInputSelector);
         if (periodoInput == null) {
-          talker.error(
-            'Itau: no se encontró el input periodo para $currencyType',
-          );
+          if (currencyType == 'internacional') {
+            break;
+          }
           return periods;
         }
 
@@ -677,7 +758,6 @@ class ClItauPersonasConnectionService extends ConnectionService {
     final year = int.tryParse(periodStr.substring(0, 4));
     final month = int.tryParse(periodStr.substring(4, 6));
     final day = int.tryParse(periodStr.substring(6, 8));
-
     if (year == null || month == null || day == null) return null;
 
     return _Period(month: month, year: year, day: day);
@@ -736,9 +816,81 @@ class ClItauPersonasConnectionService extends ConnectionService {
     String credentials,
     String productId,
     CurrencyType transactionType,
-  ) {
-    // TODO: implement getCreditCardUnbilledTransactions
-    throw UnimplementedError();
+  ) async {
+    final commonHeaders = <String, String>{
+      'Cookie': credentials,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Referer':
+          'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/deuda',
+      'Origin': 'https://banco.itau.cl',
+    };
+
+    final cookieJar = CookieJar();
+    _dio.interceptors.add(CookieManager(cookieJar));
+
+    final initialUrl = switch (transactionType) {
+      CurrencyType.national =>
+        'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-pesos',
+      CurrencyType.international =>
+        'https://banco.itau.cl/wps/myportal/newolb/web/tarjeta-credito/resumen/compras-en-dolares',
+    };
+
+    final initialResponse = await _dio.get(
+      initialUrl,
+
+      options: Options(headers: commonHeaders),
+    );
+
+    await _checkDioResponse(initialResponse);
+
+    final initialHtml = initialResponse.data.toString();
+    final initialDoc = parse(initialHtml);
+
+    final baseHref = initialDoc
+        .getElementsByTagName('base')[0]
+        .attributes['href']
+        ?.trim();
+    if (baseHref == null) {
+      throw Exception('Itau: no se encontró el base href');
+    }
+
+    final selectAccountFormSelector = 'form[name="comboForm"] a';
+    final selectAccountFormElement = initialDoc.querySelector(
+      selectAccountFormSelector,
+    );
+    final selectAccountFormActionUrlPath =
+        selectAccountFormElement?.attributes['href'];
+    if (selectAccountFormActionUrlPath == null) {
+      talker.error(
+        'Itau: no se encontró el link para seleccionar la cuenta para $transactionType',
+      );
+      return [];
+    }
+
+    final selectAccountFormUrl = '$baseHref/$selectAccountFormActionUrlPath';
+
+    final selectedResponse = await _dio.post(
+      selectAccountFormUrl,
+      data: {'cuentaIdSelected': productId},
+      options: Options(
+        headers: commonHeaders,
+        contentType: Headers.formUrlEncodedContentType,
+        responseType: ResponseType.plain,
+      ),
+    );
+    await _checkDioResponse(selectedResponse);
+
+    final selectedHtml = selectedResponse.data.toString();
+
+    final transactions =
+        ClItauPersonasCreditCardUnbilledTransactionMapper.fromUnbilledTransactionsHtml(
+      selectedHtml,
+      transactionType,
+    );
+
+    return CommonsMapper.processTransactions(transactions);
   }
 }
 
@@ -764,20 +916,23 @@ Future<void> _checkDioException(DioException exception) async {
   talker.error('Error fetching Itau: $exception');
 }
 
-class _Period {
+class _Period extends Equatable {
+  final int? day;
   final int month;
   final int year;
-  final int? day;
 
   _Period previousMonth() {
     if (month == 1) {
-      return _Period(month: 12, year: year - 1);
+      return _Period(month: 12, year: year - 1, day: null);
     } else {
-      return _Period(month: month - 1, year: year);
+      return _Period(month: month - 1, year: year, day: null);
     }
   }
 
-  _Period({required this.month, required this.year, this.day});
+  _Period({required this.month, required this.year, required this.day});
+
+  @override
+  List<Object?> get props => [day, month, year];
 }
 
 class _DepositaryAccountData {
