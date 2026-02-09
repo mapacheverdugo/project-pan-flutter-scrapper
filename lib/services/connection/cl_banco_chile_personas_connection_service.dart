@@ -123,12 +123,13 @@ class ClBancoChilePersonasConnectionService extends ConnectionService {
         },
       );
 
+      final buttonSelector = 'form[name="loginForm"] button';
+
+      await webview.waitForSelector(buttonSelector, timeout: timeout);
+
       // Check for error selector will be done after click
 
-      await webview.click(
-        '#ppriv_per-login-click-ingresar-login',
-        timeout: timeout,
-      );
+      await webview.tap(buttonSelector, timeout: timeout);
 
       log("BancoChileService auth waiting for success...");
 

@@ -172,7 +172,7 @@ class _MainScreenState extends State<MainScreen> {
                       log('exchangeToken: $exchangeToken');
                       log('username: $username');
                     },
-                    headless: kDebugMode,
+                    headless: !kDebugMode,
                   );
                 },
                 child: Text('Launch'),
