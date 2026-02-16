@@ -63,13 +63,16 @@ class _RutFormFieldState extends State<RutFormField> {
           label: const Text("RUT"),
           border: const OutlineInputBorder(),
           suffixIcon: widget.clearable && _controller.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.cancel),
-                  onPressed: () {
+              ? GestureDetector(
+                  onTap: () {
                     _controller.clear();
                     _currentValue = null;
                     widget.onChanged?.call(_currentValue);
                   },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.cancel),
+                  ),
                 )
               : null,
         );

@@ -118,9 +118,12 @@ class _MainScreenState extends State<MainScreen> {
                         border: OutlineInputBorder(),
                         hintText: 'Enter your Public Key',
                         suffixIcon: _publicKeyController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: _clearPublicKey,
+                            ? GestureDetector(
+                                onTap: _clearPublicKey,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Icon(Icons.close),
+                                ),
                               )
                             : null,
                       ),

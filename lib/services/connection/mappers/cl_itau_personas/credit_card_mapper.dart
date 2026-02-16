@@ -16,7 +16,7 @@ class ClItauPersonasCreditCardMapper {
         selectedOption?.text ?? '',
       );
 
-      final String productNumber =
+      final String productId =
           (selectedOption?.attributes['value']?.trim().isNotEmpty == true)
           ? selectedOption!.attributes['value']!.trim()
           : (meta.cardLast4Digits ?? meta.name);
@@ -94,8 +94,8 @@ class ClItauPersonasCreditCardMapper {
 
       return [
         ExtractedProductModel(
-          providerId: productNumber,
-          number: productNumber,
+          providerId: productId,
+          number: meta.cardLast4Digits ?? productId,
           cardBrand: meta.cardBrand,
           cardLast4Digits: meta.cardLast4Digits,
           name: meta.name,

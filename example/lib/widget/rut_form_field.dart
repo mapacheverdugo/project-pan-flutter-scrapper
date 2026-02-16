@@ -44,13 +44,16 @@ class _RutFormFieldState extends State<RutFormField> {
 
     if (widget.clearable && _controller.text.isNotEmpty) {
       inputDecoration = inputDecoration.copyWith(
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.cancel),
-          onPressed: () {
+        suffixIcon: GestureDetector(
+          onTap: () {
             _controller.clear();
             _currentValue = null;
             widget.onChanged?.call(_currentValue);
           },
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Icon(Icons.cancel),
+          ),
         ),
       );
     }

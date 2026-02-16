@@ -63,24 +63,30 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_controller.text.isNotEmpty) ...[
-            IconButton(
-              icon: Icon(
-                _isVisible
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+            GestureDetector(
+              onTap: () => setState(() => _isVisible = !_isVisible),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  _isVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
               ),
-              onPressed: () => setState(() => _isVisible = !_isVisible),
             ),
           ],
           if (showClear) ...[
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 _controller.clear();
                 _currentValue = "";
                 widget.onChanged?.call(_currentValue);
                 setState(() {});
               },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(Icons.clear),
+              ),
             ),
           ],
         ],
