@@ -51,23 +51,19 @@ class PanConnect {
       await Navigator.push(
         context,
         PageRouteBuilder(
-          transitionsBuilder:
-              (context, animation, secondaryAnimation, child) {
-                const begin = Offset(0.0, 1.0);
-                const end = Offset.zero;
-                const curve = Curves.easeIn;
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(0.0, 1.0);
+            const end = Offset.zero;
+            const curve = Curves.easeIn;
 
-                var tween = Tween(
-                  begin: begin,
-                  end: end,
-                ).chain(CurveTween(curve: curve));
-                final offsetAnimation = animation.drive(tween);
+            var tween = Tween(
+              begin: begin,
+              end: end,
+            ).chain(CurveTween(curve: curve));
+            final offsetAnimation = animation.drive(tween);
 
-                return SlideTransition(
-                  position: offsetAnimation,
-                  child: child,
-                );
-              },
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
           pageBuilder: (context, animation, secondaryAnimation) =>
               ConnectionFlowScreen(
                 initialDataFuture: initialDataFuture,
@@ -91,9 +87,7 @@ class PanConnect {
                       context: context,
                       builder: (dialogContext) => AlertDialog(
                         title: const Text('Error'),
-                        content: Text(
-                          'Failed to fetch institutions: $message',
-                        ),
+                        content: Text('Failed to fetch institutions: $message'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -147,23 +141,14 @@ class PanConnect {
     return currentConnections.map((e) => e.toEntity()).toList();
   }
 
-  static Future<void> syncLocalConnection(
+  static Future<void> syncLocalConnectionsWithConnectionId(
+    String connectionId,
     String linkToken,
     String publicKey,
   ) async {
     final dio = Dio();
     final apiService = ApiServiceImpl(dio);
     final storage = StorageServiceImpl();
-
-    final connectionId = await apiService.validateLinkToken(
-      linkToken: linkToken,
-      publicKey: publicKey,
-    );
-
-    final hasConnections = await storage.hasConnections();
-    if (!hasConnections) {
-      throw PanConnectException(PanConnectExceptionType.connectionNotFound);
-    }
 
     final connection = await storage.getConnectionById(connectionId);
 
@@ -184,9 +169,34 @@ class PanConnect {
       storage,
       panScrapperService,
       publicKey: publicKey,
-      linkToken: linkToken,
+      linkToken: "",
       connectionId: connectionId,
       forceFullSync: needFullSync,
+    );
+  }
+
+  static Future<void> syncLocalConnection(
+    String linkToken,
+    String publicKey,
+  ) async {
+    final dio = Dio();
+    final apiService = ApiServiceImpl(dio);
+    final storage = StorageServiceImpl();
+
+    final connectionId = await apiService.validateLinkToken(
+      linkToken: linkToken,
+      publicKey: publicKey,
+    );
+
+    final hasConnections = await storage.hasConnections();
+    if (!hasConnections) {
+      throw PanConnectException(PanConnectExceptionType.connectionNotFound);
+    }
+
+    await syncLocalConnectionsWithConnectionId(
+      connectionId,
+      linkToken,
+      publicKey,
     );
   }
 

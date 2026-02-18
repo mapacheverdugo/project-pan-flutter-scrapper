@@ -2,11 +2,11 @@ import 'package:example/screens/credit_card_details_screen.dart';
 import 'package:example/screens/product_details_screen.dart';
 import 'package:example/widget/product_card.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/entities/local_connection.dart';
 import 'package:pan_scrapper/pan_connect.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
+import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
 
 class ConnectionDetailsScreen extends StatefulWidget {
   const ConnectionDetailsScreen({
@@ -84,7 +84,11 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                       );
                       return;
                     }
-                    PanConnect.syncLocalConnection(linkToken, widget.publicKey);
+                    PanConnect.syncLocalConnectionsWithConnectionId(
+                      widget.connection.id,
+                      "",
+                      widget.publicKey,
+                    );
                   },
                   child: Text('Sync'),
                 ),

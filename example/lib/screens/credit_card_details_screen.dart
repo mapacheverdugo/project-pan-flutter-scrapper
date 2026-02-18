@@ -2,8 +2,6 @@ import 'package:example/models/card_brand_ext.dart';
 import 'package:example/models/product_type_ext.dart';
 import 'package:example/screens/bill_period_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:pan_scrapper/entities/currency.dart';
-import 'package:pan_scrapper/entities/currency_type.dart';
 import 'package:pan_scrapper/entities/index.dart';
 import 'package:pan_scrapper/pan_scrapper_service.dart';
 import 'package:pan_scrapper/presentation/widgets/loading_indicator.dart';
@@ -150,9 +148,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
             children: [
               Text(
                 'Bill periods',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               SizedBox(width: 10),
               ElevatedButton(
@@ -181,9 +179,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
               padding: EdgeInsets.all(10),
               child: Text(
                 'Tap "Fetch" to load billed periods.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               ),
             ),
         ],
@@ -201,9 +199,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
             children: [
               Text(
                 'Bill periods',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               SizedBox(width: 10),
               ElevatedButton(
@@ -232,9 +230,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
               padding: EdgeInsets.all(10),
               child: Text(
                 'Tap "Fetch" to load billed periods.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               ),
             ),
         ],
@@ -323,9 +321,9 @@ class _CreditCardDetailsScreenState extends State<CreditCardDetailsScreen>
           _isLoadingPeriods = false;
         });
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
     }
