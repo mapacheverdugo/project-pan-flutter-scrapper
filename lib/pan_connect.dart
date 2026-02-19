@@ -169,7 +169,7 @@ class PanConnect {
       storage,
       panScrapperService,
       publicKey: publicKey,
-      linkToken: "",
+      linkToken: linkToken,
       connectionId: connectionId,
       forceFullSync: needFullSync,
     );
