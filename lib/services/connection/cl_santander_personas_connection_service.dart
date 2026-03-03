@@ -159,12 +159,17 @@ class ClSantanderPersonasConnectionService extends ConnectionService {
 
       await webview.evaluate(text);
 
-      final propertiesFrameJson = await webview.evaluate("propertiesFrame");
+      final propertiesFrameJson =
+          await webview.evaluate("propertiesFrame") as Map;
 
       await webview.close();
 
+      final propertiesFrameJsonMap = propertiesFrameJson.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+
       return ClSantanderPersonasPropertiesResponseModel.fromMap(
-        propertiesFrameJson,
+        propertiesFrameJsonMap,
       );
     } catch (e) {
       await webview.close();
