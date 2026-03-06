@@ -169,6 +169,7 @@ class _MainScreenState extends State<MainScreen> {
 
                   await PanConnect.launch(
                     context,
+                    "https://hw4x6tsju2.execute-api.us-east-1.amazonaws.com/dev",
                     publicKey,
                     linkWidgetToken,
                     onSuccess: (exchangeToken, username) {

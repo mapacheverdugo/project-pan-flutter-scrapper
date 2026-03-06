@@ -22,14 +22,14 @@ class PanConnect {
 
   static Future<void> launch(
     BuildContext context,
-
+    String baseUrl,
     String publicKey,
     String linkWidgetToken, {
     void Function(String exchangeToken, String username)? onSuccess,
     bool headless = true,
   }) async {
     final dio = Dio();
-    final apiService = ApiServiceImpl(dio);
+    final apiService = ApiServiceImpl(dio, baseUrl: baseUrl);
 
     final initialDataFuture = Future<ConnectionInitialData>(() async {
       final results = await Future.wait([
@@ -74,6 +74,7 @@ class PanConnect {
                     password: password,
                     linkWidgetToken: linkWidgetToken,
                     publicKey: publicKey,
+                    baseUrl: baseUrl,
                     onSuccess: onSuccess,
                   );
                   if (context.mounted) {
@@ -111,10 +112,11 @@ class PanConnect {
     required String linkWidgetToken,
     required String publicKey,
     required String password,
+    required String baseUrl,
     void Function(String exchangeToken, String username)? onSuccess,
   }) async {
     final dio = Dio();
-    final apiService = ApiServiceImpl(dio);
+    final apiService = ApiServiceImpl(dio, baseUrl: baseUrl);
     final storage = StorageServiceImpl();
 
     final executeLinkTokenResult = await apiService.executeLinkWidgetToken(
@@ -145,9 +147,10 @@ class PanConnect {
     String connectionId,
     String linkToken,
     String publicKey,
+    String baseUrl,
   ) async {
     final dio = Dio();
-    final apiService = ApiServiceImpl(dio);
+    final apiService = ApiServiceImpl(dio, baseUrl: baseUrl);
     final storage = StorageServiceImpl();
 
     final connection = await storage.getConnectionById(connectionId);
@@ -175,12 +178,13 @@ class PanConnect {
     );
   }
 
-  static Future<void> syncLocalConnection(
-    String linkToken,
-    String publicKey,
-  ) async {
+  static Future<void> syncLocalConnection({
+    required String linkToken,
+    required String publicKey,
+    required String baseUrl,
+  }) async {
     final dio = Dio();
-    final apiService = ApiServiceImpl(dio);
+    final apiService = ApiServiceImpl(dio, baseUrl: baseUrl);
     final storage = StorageServiceImpl();
 
     final connectionId = await apiService.validateLinkToken(
@@ -197,6 +201,7 @@ class PanConnect {
       connectionId,
       linkToken,
       publicKey,
+      baseUrl,
     );
   }
 
@@ -247,9 +252,10 @@ class PanConnect {
     void Function(String syncToken)? onStart,
     void Function(String syncToken, Object? error)? onError,
     void Function(String syncToken)? onSuccess,
+    required String baseUrl,
   }) async {
     final dio = Dio();
-    final apiService = ApiServiceImpl(dio);
+    final apiService = ApiServiceImpl(dio, baseUrl: baseUrl);
     final storage = StorageServiceImpl();
 
     final tasks = <Future<void>>[];

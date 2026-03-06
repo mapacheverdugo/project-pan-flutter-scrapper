@@ -88,6 +88,7 @@ class _ConnectionDetailsScreenState extends State<ConnectionDetailsScreen> {
                       widget.connection.id,
                       "",
                       widget.publicKey,
+                      "https://hw4x6tsju2.execute-api.us-east-1.amazonaws.com/dev",
                     );
                   },
                   child: Text('Sync'),

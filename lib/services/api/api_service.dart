@@ -36,11 +36,9 @@ abstract class ApiService {
 
 class ApiServiceImpl extends ApiService {
   final Dio _dio;
+  final String baseUrl;
 
-  ApiServiceImpl(this._dio);
-
-  static const _baseUrl =
-      "https://hw4x6tsju2.execute-api.us-east-1.amazonaws.com/dev";
+  ApiServiceImpl(this._dio, {required this.baseUrl});
 
   @override
   /// Fetches institutions from the API
@@ -49,7 +47,7 @@ class ApiServiceImpl extends ApiService {
   }) async {
     try {
       final response = await _dio.get<dynamic>(
-        '$_baseUrl/api/institutions',
+        '$baseUrl/api/institutions',
         queryParameters: {'includeExperimentalInstitutions': false},
         options: Options(
           headers: {
@@ -105,7 +103,7 @@ class ApiServiceImpl extends ApiService {
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '$_baseUrl/api/link-intents/current',
+        '$baseUrl/api/link-intents/current',
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -142,7 +140,7 @@ class ApiServiceImpl extends ApiService {
     log('body: ${jsonEncode(body)}');
 
     final response = await _dio.post<Map<String, dynamic>>(
-      '$_baseUrl/api/link-intents/execute',
+      '$baseUrl/api/link-intents/execute',
       data: body,
       options: Options(
         headers: {
@@ -167,7 +165,7 @@ class ApiServiceImpl extends ApiService {
     required String publicKey,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '$_baseUrl/api/link-tokens/validate',
+      '$baseUrl/api/link-tokens/validate',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
@@ -196,7 +194,7 @@ class ApiServiceImpl extends ApiService {
     log('submitExtractions body: ${jsonEncode(body)}');
 
     final response = await _dio.post<Map<String, dynamic>>(
-      '$_baseUrl/api/institution/extractions',
+      '$baseUrl/api/institution/extractions',
       data: body,
       options: Options(
         headers: {
